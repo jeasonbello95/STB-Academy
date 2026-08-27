@@ -8,7 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "subir": "git add . && git commit -m \"Actualizacion de proyecto\" && git push origin main",
+    "actualizar": "git pull origin main",
+    "crear-repo": "gh repo create STB-Academy --source=. --public --push"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
