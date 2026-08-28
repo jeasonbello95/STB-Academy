@@ -1,0 +1,64 @@
+### 🛠️ Lo ue se ha configurado en el Backend:
+
+  1. Archivo .gitignore personalizado: Optimizado para WordPress / Local WP para ignorar logs de servidor (logs/),
+  configuraciones locales (conf/) y archivos temporales/caché de WordPress (wp-content/cache/, etc.).
+  2. Repositorio Git Local: Inicializado en la rama main con su commit inicial limpio.
+  3. Scripts de Automatización: Se crearon los mismos comandos de sincronización rápida (subir y actualizar) tanto en
+  .bat como en .ps1.
+  ──────
+  ### 🌐 Resumen de Estructura de Repositorios
+
+   Rol                                  │ Carpeta Local                        │ Nombre sugerido en GitHub
+  ──────────────────────────────────────┼──────────────────────────────────────┼──────────────────────────────────────
+   Frontend                             │ C:\Users\STB\Documents\Proyect1      │ STB-Frontend
+   Backend                              │ C:\Users\STB\Local Sites\stbsite     │ STB-Backend
+  ──────
+  ### 🚀 Pasos para Crear y Conectar Ambos Repositorios en GitHub
+
+  #### 1. Iniciar sesión en GitHub CLI (solo se hace una vez)
+
+  Abre cualquier terminal y ejecuta:
+
+    gh auth login
+
+  (Selecciona GitHub.com ➔ HTTPS ➔ Yes ➔ Login with a web browser e introduce el código que te aparezca).
+  ──────
+  #### 2. Crear los repositorios en GitHub
+
+  • Para el Frontend:
+  Ve a C:\Users\STB\Documents\Proyect1 y ejecuta:
+    .\crear-repo.bat
+  (o npm run crear-repo)
+  • Para el Backend:
+  Ve a C:\Users\STB\Local Sites\stbsite y ejecuta:
+    .\crear-repo.bat
+
+
+  (Ambos scripts crearán el repositorio en tu cuenta de GitHub y subirán la rama main automáticamente).
+  ──────
+  ### 🔄 Comandos del Día a Día para Ambos Proyectos
+
+  #### ⬆️ Para SUBIR tus cambios hechos a GitHub
+
+  (Agrega todos los archivos, hace commit con fecha o mensaje personalizado y sube a GitHub)
+
+  • En el Frontend (Proyect1):
+      • Vía NPM: npm run subir
+      • Vía CMD / Terminal: .\subir.bat (o con mensaje: .\subir.bat "Nuevo componente")
+      • Vía PowerShell: .\subir.ps1 (o .\subir.ps1 -Mensaje "Nuevo componente")
+  • En el Backend (stbsite):
+      • Vía CMD / Terminal: .\subir.bat (o con mensaje: .\subir.bat "Ajustes de plugins y tema")
+      • Vía PowerShell: .\subir.ps1 (o .\subir.ps1 -Mensaje "Ajustes de plugins y tema")
+
+  ──────
+  #### ⬇️ Para ACTUALIZAR tus proyectos con lo último en GitHub
+
+  (Descarga e integra los cambios remotos en tu copia local)
+
+  • En el Frontend (Proyect1):
+      • Vía NPM: npm run actualizar
+      • Vía CMD / Terminal: .\actualizar.bat
+      • Vía PowerShell: .\actualizar.ps1
+  • En el Backend (stbsite):
+      • Vía CMD / Terminal: .\actualizar.bat
+      • Vía PowerShell: .\actualizar.ps1
