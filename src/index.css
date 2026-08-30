@@ -15,12 +15,12 @@
   }
 
   body {
-    @apply bg-ink-black text-white font-sans antialiased;
+    @apply bg-deep-950 text-white font-sans antialiased;
     overflow-x: hidden;
   }
 
   ::selection {
-    @apply bg-neon-green/30 text-white;
+    @apply bg-primary-500/30 text-white;
   }
 
   /* Custom scrollbar */
@@ -28,13 +28,13 @@
     width: 8px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-ink-gray-950;
+    @apply bg-deep-950;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-ink-gray-700 rounded-full;
+    @apply bg-primary-700 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-neon-green/50;
+    @apply bg-primary-500/60;
   }
 }
 
@@ -44,7 +44,7 @@
   }
 
   .glass-hover {
-    @apply transition-all duration-500 hover:bg-white/[0.08] hover:border-neon-green/40 hover:shadow-[0_0_30px_rgba(84,180,53,0.15)];
+    @apply transition-all duration-500 hover:bg-white/[0.08] hover:border-primary-500/40 hover:shadow-[0_0_30px_rgba(84,180,53,0.15)];
   }
 
   .text-gradient-neon {
@@ -52,12 +52,24 @@
     background-size: 200% auto;
   }
 
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      90deg,
+      #6fcc4b 0%,
+      #00e5ff 45%,
+      #54b435 100%
+    );
+    background-size: 200% auto;
+    animation: gradientShift 8s ease infinite;
+  }
+
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-black bg-neon-green rounded-lg transition-all duration-300 hover:bg-neon-green-bright hover:shadow-[0_0_30px_rgba(84,180,53,0.5)] hover:scale-[1.02] active:scale-95;
+    @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-black bg-primary-500 rounded-lg transition-all duration-300 hover:bg-primary-400 hover:shadow-[0_0_30px_rgba(84,180,53,0.5)] hover:scale-[1.02] active:scale-95;
   }
 
   .btn-outline {
-    @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-white border border-white/20 rounded-lg transition-all duration-300 hover:border-neon-cyan hover:text-neon-cyan hover:shadow-[0_0_20px_rgba(0,229,255,0.2)] active:scale-95;
+    @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-white border border-white/20 rounded-lg transition-all duration-300 hover:border-primary-400 hover:text-primary-300 hover:shadow-[0_0_20px_rgba(84,180,53,0.2)] active:scale-95;
   }
 
   .section-padding {
@@ -80,5 +92,83 @@
 
   .preserve-3d {
     transform-style: preserve-3d;
+  }
+}
+
+/* Keyframes propios del tema (Tailwind solo emite los suyos si se usa la utilidad animate-*) */
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(84, 180, 53, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(84, 180, 53, 0.6);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* Ajuste de padding del header de la página de eventos */
+@media (min-width: 768px) {
+  .md\:py-24 {
+    padding-top: 0rem;
+    padding-bottom: 2rem;
+  }
+}
+
+/* Ajustes específicos de la página STBlock */
+.stblock-page .max-w-md {
+  top: 3rem;
+  max-width: 22rem;
+}
+
+.stblock-page .py-32 {
+  padding-top: 7rem;
+  padding-bottom: 0rem;
+}
+
+/* Solo al contenedor del holograma central del hero */
+.stblock-page .hero-hologram {
+  height: 11rem;
+}
+
+/* Solo a la fila de botones CTA del hero */
+.stblock-page .cta-row {
+  gap: 7.25rem;
+}
+
+/* Respeta la preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

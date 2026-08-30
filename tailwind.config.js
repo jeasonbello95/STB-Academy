@@ -24,6 +24,34 @@ export default {
           'gray-300': '#C5C5CC',
           'gray-200': '#E5E5E8',
         },
+        // STB Academy brand palette — green anchor
+        primary: {
+          50: '#F0FAEA',
+          100: '#DCF2D1',
+          200: '#B8E5A4',
+          300: '#8FD472',
+          400: '#6FCC4B',
+          500: '#54B435',
+          600: '#43962C',
+          700: '#357224',
+          800: '#2B5A1E',
+          900: '#224717',
+        },
+        // Dark blacks tinted green
+        deep: {
+          950: '#05090F',
+          900: '#07130D',
+          850: '#0A1A14',
+          800: '#0D2219',
+          700: '#0E2A24',
+        },
+        // Dark navy blues
+        navy: {
+          950: '#070B18',
+          900: '#0A1220',
+          850: '#0E1A2C',
+          800: '#12223A',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

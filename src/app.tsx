@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { CoursesPage } from '@/pages/CoursesPage';
 import { EventsPage } from '@/pages/EventsPage';
 import { HomePage } from '@/pages/HomePage';
@@ -11,9 +12,10 @@ import Register from '@/pages/Register';
 
 function SiteLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-ink-black text-white">
+    <div className="relative min-h-screen bg-deep-950 text-white">
+      <AmbientBackground />
       <Navbar />
-      <main>{children}</main>
+      <main className="relative z-10">{children}</main>
       <Footer />
     </div>
   );
