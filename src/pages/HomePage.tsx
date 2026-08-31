@@ -140,17 +140,6 @@ export function HomePage() {
             />
           ))}
         </div>
-
-        {/* Scroll hint */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="absolute bottom-8 right-8 z-20 hidden flex-col items-center gap-2 text-ink-500 md:flex"
-        >
-          <span className="text-xs uppercase tracking-widest">Scroll</span>
-          <div className="h-12 w-px bg-gradient-to-b from-primary-500 to-transparent" />
-        </motion.div>
       </section>
 
       {/* Sub-header */}

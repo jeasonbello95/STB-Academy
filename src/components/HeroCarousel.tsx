@@ -151,17 +151,6 @@ export default function HeroCarousel() {
           />
         ))}
       </div>
-
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 hidden sm:block">
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-1.5"
-        >
-          <div className="w-1 h-2 rounded-full bg-neon-green" />
-        </motion.div>
-      </div>
     </section>
   );
 }
