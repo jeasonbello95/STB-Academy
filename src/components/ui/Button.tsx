@@ -5,7 +5,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   to?: string;
   href?: string;
   variant?: 'primary' | 'secondary' | 'outline' | 'glow';
-  size?: 'lg' | 'xl';
+  size?: 'sm' | 'lg' | 'xl';
   children: ReactNode;
 }
 
@@ -17,7 +17,7 @@ const variants = {
 };
 
 export function Button({ to, href, variant = 'primary', size = 'lg', className = '', children, ...props }: ButtonProps) {
-  const classes = `inline-flex items-center justify-center gap-2 rounded-xl px-6 font-semibold transition-all duration-300 ${size === 'xl' ? 'py-4 text-lg' : 'py-3'} ${variants[variant]} ${className}`;
+  const classes = `inline-flex items-center justify-center gap-2 rounded-xl px-6 font-semibold transition-all duration-300 ${size === 'xl' ? 'py-4 text-lg' : size === 'sm' ? 'px-4 py-1.5 text-sm' : 'py-3'} ${variants[variant]} ${className}`;
 
   if (to) return <RouterLink to={to} className={classes}>{children}</RouterLink>;
   if (href) return <a href={href} className={classes}>{children}</a>;
