@@ -64,12 +64,6 @@ export function AmbientBackground() {
         }}
       />
 
-      {/* Scanline: banda de luz que recorre la pantalla */}
-      {!reduceMotion && (
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 animate-scan bg-[linear-gradient(to_bottom,transparent,transparent_45%,rgba(111,204,75,0.25)_50%,rgba(0,229,255,0.15)_53%,transparent_58%)]" />
-        </div>
-      )}
 
       {/* Vignette sutil para profundidad */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,0,0,0.55)_100%)]" />
