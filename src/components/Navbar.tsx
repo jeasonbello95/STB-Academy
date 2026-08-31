@@ -1,21 +1,96 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, LogIn } from 'lucide-react';
-import { navLinks } from '@/data/content';
+import { Menu, X, LogIn, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { navLinks as defaultNavLinks } from '@/data/content';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { RouterLink } from '@/components/RouterLink';
 import { BrandLogo } from '@/components/BrandLogo';
 
+interface NavItem {
+  id?: string;
+  label: string;
+  href: string;
+  target?: string;
+}
+
+interface AuthData {
+  isLoggedIn: boolean;
+  userId?: number | null;
+  userName?: string | null;
+  userEmail?: string | null;
+  userAvatar?: string | null;
+  dashboardUrl?: string;
+  loginUrl?: string;
+  logoutUrl?: string;
+  registerUrl?: string;
+}
+
+interface HeaderData {
+  menu: NavItem[];
+  auth: AuthData;
+  site: {
+    name: string;
+    description: string;
+    url: string;
+  };
+}
+
 export default function Navbar() {
   const scrolled = useScrollPosition(20);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+
+  // Inicializar con datos inyectados por WordPress (si existen) o con valores por defecto
+  const [headerData, setHeaderData] = useState<HeaderData>(() => {
+    const wpHeader = (window as any)?.STB_APP_CONFIG?.headerData;
+    if (wpHeader && Array.isArray(wpHeader.menu)) {
+      return wpHeader;
+    }
+    return {
+      menu: defaultNavLinks,
+      auth: {
+        isLoggedIn: false,
+        loginUrl: '/login',
+        dashboardUrl: '/dashboard',
+        logoutUrl: '#',
+      },
+      site: {
+        name: 'STB Academy',
+        description: 'Academia de Robótica y Tecnología',
+        url: '/',
+      },
+    };
+  });
 
   useEffect(() => {
     const handleRouteChange = () => setCurrentPath(window.location.pathname);
     window.addEventListener('popstate', handleRouteChange);
+
+    // Si corre en WordPress pero headerData no vino en window, intentar cargar por REST
+    const stbApiUrl = (window as any)?.STB_APP_CONFIG?.stbApiUrl;
+    if (stbApiUrl && !(window as any)?.STB_APP_CONFIG?.headerData) {
+      fetch(`${stbApiUrl}header`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.menu) {
+            setHeaderData(data);
+          }
+        })
+        .catch((err) => console.warn('Could not fetch WordPress header data:', err));
+    }
+
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
+
+  const links = headerData.menu && headerData.menu.length > 0 ? headerData.menu : defaultNavLinks;
+  const { auth } = headerData;
+
+  const isCurrentActive = (href: string) => {
+    if (href === '/' && (currentPath === '/' || currentPath === '')) return true;
+    if (href !== '/' && currentPath.startsWith(href)) return true;
+    return false;
+  };
 
   return (
     <motion.header
@@ -24,62 +99,126 @@ export default function Navbar() {
       transition={{ duration: 0.6, ease: 'easeOut' }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
-          ? 'bg-deep-950/80 backdrop-blur-xl border-b border-white/10 py-3 shadow-[0_10px_40px_rgba(0,0,0,0.35)]'
+          ? 'bg-deep-950/85 backdrop-blur-xl border-b border-white/10 py-3 shadow-[0_10px_40px_rgba(0,0,0,0.4)]'
           : 'bg-transparent py-5'
       }`}
     >
-      {/* Línea inferior con gradiente verde/azul */}
+      {/* Línea inferior de acento con gradiente verde */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent" />
 
       <nav className="container-max section-padding flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo oficial */}
         <RouterLink to="/" className="flex items-center gap-2 group">
           <BrandLogo variant="white" size="sm" />
         </RouterLink>
 
-        {/* Center nav links */}
+        {/* Enlaces de navegación principales (Administrados desde WordPress) */}
         <ul className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => {
-            const isHighlighted = link.href === '/stblock';
-            const isActive = currentPath === link.href;
+          {links.map((link) => {
+            const isHighlighted = link.href.includes('/stblock');
+            const isActive = isCurrentActive(link.href);
+            const isExternal = link.href.startsWith('http://') || link.href.startsWith('https://');
+
             return (
-              <li key={link.href}>
-                <RouterLink
-                  to={link.href}
-                  className={
-                    isHighlighted
-                      ? 'rounded-full border border-primary-500/50 bg-primary-500/10 px-5 py-2 text-sm font-semibold text-primary-300 hover:bg-primary-500/20 hover:border-primary-400 hover:shadow-[0_0_15px_rgba(84,180,53,0.3)] transition-all'
-                      : `font-display text-[0.9rem] font-medium tracking-wide transition-colors relative group ${
-                          isActive ? 'text-white' : 'text-ink-gray-300 hover:text-white'
-                        }`
-                  }
-                >
-                  {link.label}
-                  {!isHighlighted && (
-                    <span
-                      className={`absolute -bottom-1 left-0 h-[2px] bg-gradient-to-r from-primary-400 to-cyan-400 transition-all duration-300 ${
-                        isActive ? 'w-full' : 'w-0 group-hover:w-full'
-                      }`}
-                    />
-                  )}
-                </RouterLink>
+              <li key={link.href + link.label}>
+                {isExternal ? (
+                  <a
+                    href={link.href}
+                    target={link.target || '_self'}
+                    rel="noopener noreferrer"
+                    className="font-display text-[0.9rem] font-medium tracking-wide text-ink-gray-300 hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                ) : (
+                  <RouterLink
+                    to={link.href}
+                    className={
+                      isHighlighted
+                        ? 'rounded-full border border-primary-500/50 bg-primary-500/10 px-5 py-2 text-sm font-semibold text-primary-300 hover:bg-primary-500/20 hover:border-primary-400 hover:shadow-[0_0_15px_rgba(84,180,53,0.3)] transition-all'
+                        : `font-display text-[0.9rem] font-medium tracking-wide transition-colors relative group ${
+                            isActive ? 'text-white' : 'text-ink-gray-300 hover:text-white'
+                          }`
+                    }
+                  >
+                    {link.label}
+                    {!isHighlighted && (
+                      <span
+                        className={`absolute -bottom-1 left-0 h-[2px] bg-gradient-to-r from-primary-400 to-cyan-400 transition-all duration-300 ${
+                          isActive ? 'w-full' : 'w-0 group-hover:w-full'
+                        }`}
+                      />
+                    )}
+                  </RouterLink>
+                )}
               </li>
             );
           })}
         </ul>
 
-        {/* Right actions */}
+        {/* Acciones de usuario y autenticación (Integradas con Tutor LMS y WP) */}
         <div className="hidden md:flex items-center gap-3">
-          <RouterLink
-            to="/login"
-            className="group inline-flex items-center gap-2 rounded-full bg-primary-500 px-6 py-2.5 text-sm font-bold tracking-wide text-black hover:bg-primary-400 hover:shadow-[0_0_20px_rgba(84,180,53,0.4)] transition-all"
-          >
-            <LogIn className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            Acceder
-          </RouterLink>
+          {auth.isLoggedIn ? (
+            <div className="relative">
+              <button
+                onClick={() => setUserDropdownOpen((prev) => !prev)}
+                className="flex items-center gap-2.5 rounded-full border border-primary-500/40 bg-deep-900/90 py-1.5 pl-2 pr-4 text-sm font-medium text-white hover:border-primary-400 hover:bg-primary-500/10 transition-all"
+              >
+                {auth.userAvatar ? (
+                  <img
+                    src={auth.userAvatar}
+                    alt={auth.userName || 'Usuario'}
+                    className="h-7 w-7 rounded-full object-cover border border-primary-400/50"
+                  />
+                ) : (
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-500/20 text-primary-400">
+                    <User className="h-4 w-4" />
+                  </div>
+                )}
+                <span className="max-w-[120px] truncate">{auth.userName || 'Mi Cuenta'}</span>
+              </button>
+
+              {/* Menú desplegable de estudiante Tutor LMS */}
+              <AnimatePresence>
+                {userDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-white/15 bg-deep-950/95 p-2 shadow-2xl backdrop-blur-xl"
+                  >
+                    <a
+                      href={auth.dashboardUrl || '/dashboard'}
+                      className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-200 hover:bg-primary-500/15 hover:text-primary-300 transition-colors"
+                    >
+                      <LayoutDashboard className="h-4 w-4 text-primary-400" />
+                      Panel del Estudiante
+                    </a>
+                    <div className="my-1 h-px bg-white/10" />
+                    <a
+                      href={auth.logoutUrl || '#'}
+                      className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Cerrar Sesión
+                    </a>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <a
+              href={auth.loginUrl || '/login'}
+              className="group inline-flex items-center gap-2 rounded-full bg-primary-500 px-6 py-2.5 text-sm font-bold tracking-wide text-black hover:bg-primary-400 hover:shadow-[0_0_20px_rgba(84,180,53,0.4)] transition-all"
+            >
+              <LogIn className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              Acceder
+            </a>
+          )}
         </div>
 
-        {/* Mobile toggle */}
+        {/* Toggle para versión móvil */}
         <button
           className="md:hidden p-2 text-white"
           aria-label="Menú"
@@ -89,7 +228,7 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {/* Mobile menu */}
+      {/* Menú móvil desplegable */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -100,38 +239,64 @@ export default function Navbar() {
             className="md:hidden overflow-hidden bg-deep-950/95 backdrop-blur-xl border-t border-white/10"
           >
             <ul className="section-padding py-4 space-y-3">
-              {navLinks.map((link) => {
-                const isHighlighted = link.href === '/stblock';
-                const isActive = currentPath === link.href;
+              {links.map((link) => {
+                const isHighlighted = link.href.includes('/stblock');
+                const isActive = isCurrentActive(link.href);
+                const isExternal = link.href.startsWith('http://') || link.href.startsWith('https://');
+
                 return (
-                  <li key={link.href}>
-                    <RouterLink
-                      to={link.href}
-                      onClick={() => setMobileOpen(false)}
-                      className={
-                        isHighlighted
-                          ? 'block text-center rounded-xl border border-primary-500/40 bg-primary-500/10 px-4 py-2.5 text-base font-semibold text-primary-300 hover:bg-primary-500/20 transition-all'
-                          : `block text-base font-medium transition-colors py-2 ${
-                              isActive
-                                ? 'text-primary-400 font-semibold'
-                                : 'text-ink-gray-300 hover:text-primary-400'
-                            }`
-                      }
-                    >
-                      {link.label}
-                    </RouterLink>
+                  <li key={link.href + link.label}>
+                    {isExternal ? (
+                      <a
+                        href={link.href}
+                        target={link.target || '_self'}
+                        rel="noopener noreferrer"
+                        onClick={() => setMobileOpen(false)}
+                        className="block text-base font-medium text-ink-gray-300 py-2 hover:text-primary-400"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <RouterLink
+                        to={link.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={
+                          isHighlighted
+                            ? 'block text-center rounded-xl border border-primary-500/40 bg-primary-500/10 px-4 py-2.5 text-base font-semibold text-primary-300 hover:bg-primary-500/20 transition-all'
+                            : `block text-base font-medium transition-colors py-2 ${
+                                isActive
+                                  ? 'text-primary-400 font-semibold'
+                                  : 'text-ink-gray-300 hover:text-primary-400'
+                              }`
+                        }
+                      >
+                        {link.label}
+                      </RouterLink>
+                    )}
                   </li>
                 );
               })}
+
               <li className="pt-2">
-                <RouterLink
-                  to="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-2 text-center text-sm font-bold text-black bg-primary-500 px-4 py-3 rounded-xl hover:bg-primary-400 transition-all"
-                >
-                  <LogIn className="h-4 w-4" />
-                  Acceder
-                </RouterLink>
+                {auth.isLoggedIn ? (
+                  <a
+                    href={auth.dashboardUrl || '/dashboard'}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 text-center text-sm font-bold text-black bg-primary-500 px-4 py-3 rounded-xl hover:bg-primary-400 transition-all"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Panel de Estudiante ({auth.userName})
+                  </a>
+                ) : (
+                  <a
+                    href={auth.loginUrl || '/login'}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 text-center text-sm font-bold text-black bg-primary-500 px-4 py-3 rounded-xl hover:bg-primary-400 transition-all"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Acceder
+                  </a>
+                )}
               </li>
             </ul>
           </motion.div>
