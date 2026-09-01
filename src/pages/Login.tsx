@@ -11,11 +11,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -26,18 +27,46 @@ export default function Login() {
 
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const restUrl = (window as any).STB_APP_CONFIG?.stbApiUrl || '/wp-json/stb/v1/';
+      const response = await fetch(`${restUrl}auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': (window as any).STB_APP_CONFIG?.nonce || '',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          username: email.trim(),
+          password: password,
+          remember: remember,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          if (data.redirectUrl) {
+            window.location.href = data.redirectUrl;
+          } else {
+            navigate('/cursos');
+          }
+        }, 800);
+      } else {
+        setError(data.message || 'Credenciales inválidas. Verifica tu correo y contraseña.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Ocurrió un error al conectar con el servidor. Intenta de nuevo.');
+    } finally {
       setLoading(false);
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/cursos');
-      }, 700);
-    }, 900);
+    }
   };
 
   return (
     <div className="relative min-h-screen text-white flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-      {/* Fondo global idéntico con orbes verde/azul, cuadrícula técnica y scanline */}
+      {/* Fondo global idéntico con orbes verde/azul y cuadrícula técnica */}
       <AmbientBackground />
 
       {/* Botón Volver al inicio */}
@@ -74,7 +103,7 @@ export default function Login() {
               Iniciar Sesión
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-ink-gray-400">
-              Ingresa a tu cuenta y continúa tus cursos
+              Ingresa a tu cuenta y continúa tus cursos en STB Academy
             </p>
           </div>
 
@@ -97,23 +126,23 @@ export default function Login() {
                 className="px-4 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs text-emerald-300 font-semibold flex items-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>¡Bienvenido de vuelta! Redirigiendo...</span>
+                <span>¡Bienvenido de vuelta! Redirigiendo a tu panel...</span>
               </motion.div>
             )}
 
-            {/* Email */}
+            {/* Email o Usuario */}
             <div>
               <label className="block text-xs font-semibold text-ink-gray-300 mb-1.5">
-                Correo electrónico
+                Correo electrónico o Usuario
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-gray-500" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ejemplo@stbacademy.net"
+                  placeholder="tu@correo.com o nombre_usuario"
                   className="w-full pl-10 pr-4 py-3 rounded-xl bg-deep-950/80 border border-white/10 text-white placeholder:text-ink-gray-500 text-sm focus:outline-none focus:border-primary-500/70 focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
@@ -125,9 +154,6 @@ export default function Login() {
                 <label className="block text-xs font-semibold text-ink-gray-300">
                   Contraseña
                 </label>
-                <a href="#" className="text-xs text-primary-400 hover:text-primary-300 transition-colors">
-                  ¿La olvidaste?
-                </a>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-gray-500" />
@@ -155,6 +181,8 @@ export default function Login() {
               <label className="flex items-center gap-2 text-ink-gray-400 cursor-pointer">
                 <input
                   type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
                   className="w-4 h-4 rounded border-white/20 bg-deep-950 accent-primary-500 cursor-pointer"
                 />
                 <span>Mantener sesión iniciada</span>
@@ -167,7 +195,7 @@ export default function Login() {
               disabled={loading || success}
               className="w-full rounded-xl bg-primary-500 hover:bg-primary-400 text-black font-bold py-3.5 text-sm shadow-[0_0_20px_rgba(84,180,53,0.4)] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
             >
-              {loading ? 'Accediendo...' : success ? '¡Listo!' : 'Ingresar a mi cuenta'}
+              {loading ? 'Validando con WordPress...' : success ? '¡Acceso Correcto!' : 'Ingresar a mi cuenta'}
             </button>
           </form>
 
@@ -202,4 +230,3 @@ export default function Login() {
     </div>
   );
 }
-

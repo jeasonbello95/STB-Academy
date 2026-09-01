@@ -24,7 +24,7 @@ export default function Register() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -39,13 +39,43 @@ export default function Register() {
     }
 
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      const restUrl = (window as any).STB_APP_CONFIG?.stbApiUrl || '/wp-json/stb/v1/';
+      const response = await fetch(`${restUrl}auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': (window as any).STB_APP_CONFIG?.nonce || '',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          password: form.password,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          if (data.redirectUrl) {
+            window.location.href = data.redirectUrl;
+          } else {
+            navigate('/cursos');
+          }
+        }, 800);
+      } else {
+        setError(data.message || 'No se pudo completar el registro. Verifica los datos ingresados.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Ocurrió un error al conectar con el servidor. Intenta de nuevo.');
+    } finally {
       setLoading(false);
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/cursos');
-      }, 700);
-    }, 900);
+    }
   };
 
   return (
@@ -87,7 +117,7 @@ export default function Register() {
               Crea tu Cuenta Gratis
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-ink-gray-400">
-              Únete a la comunidad líder en robótica y tecnología
+              Únete a la comunidad líder en robótica y tecnología en STB Academy
             </p>
           </div>
 
@@ -110,7 +140,7 @@ export default function Register() {
                 className="px-4 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs text-emerald-300 font-semibold flex items-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>¡Cuenta creada con éxito! Redirigiendo...</span>
+                <span>¡Cuenta creada con éxito! Redirigiendo a tu panel...</span>
               </motion.div>
             )}
 
@@ -220,7 +250,7 @@ export default function Register() {
               disabled={loading || success}
               className="w-full rounded-xl bg-primary-500 hover:bg-primary-400 text-black font-bold py-3.5 text-sm shadow-[0_0_20px_rgba(84,180,53,0.4)] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] mt-2"
             >
-              {loading ? 'Creando cuenta...' : success ? '¡Listo!' : 'Crear mi cuenta gratis'}
+              {loading ? 'Creando cuenta en WordPress...' : success ? '¡Listo!' : 'Crear mi cuenta gratis'}
             </button>
           </form>
 
@@ -255,4 +285,3 @@ export default function Register() {
     </div>
   );
 }
-
