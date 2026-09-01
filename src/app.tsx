@@ -9,6 +9,7 @@ import { HomePage } from '@/pages/HomePage';
 import { STBlockPage } from '@/pages/STBlockPage';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
+import VerifyEmailPage from '@/pages/VerifyEmailPage';
 
 function SiteLayout({ children }: { children: ReactNode }) {
   return (
@@ -67,6 +68,7 @@ function App() {
 
       <Route path="/login" element={<Login />} />
       <Route path="/registro" element={<Register />} />
+      <Route path="/verificar-cuenta" element={<VerifyEmailPage />} />
     </Routes>
   );
 }

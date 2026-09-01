@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowLeft, Eye, EyeOff, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, Eye, EyeOff, Sparkles, CheckCircle2, Send, AlertTriangle } from 'lucide-react';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Mascot } from '@/components/Mascot';
@@ -15,10 +15,16 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsUnverified(false);
+    setResendMsg('');
 
     if (!email || !password) {
       setError('Por favor completa todos los campos.');
@@ -54,6 +60,10 @@ export default function Login() {
           }
         }, 800);
       } else {
+        if (data.isUnverified) {
+          setIsUnverified(true);
+          setUnverifiedEmail(data.email || email.trim());
+        }
         setError(data.message || 'Credenciales inválidas. Verifica tu correo y contraseña.');
       }
     } catch (err) {
@@ -61,6 +71,34 @@ export default function Login() {
       setError('Ocurrió un error al conectar con el servidor. Intenta de nuevo.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setResendMsg('');
+    try {
+      const restUrl = (window as any).STB_APP_CONFIG?.stbApiUrl || '/wp-json/stb/v1/';
+      const response = await fetch(`${restUrl}auth/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': (window as any).STB_APP_CONFIG?.nonce || '',
+        },
+        body: JSON.stringify({ email: unverifiedEmail }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setResendMsg('¡Nuevo enlace enviado! Revisa tu bandeja de entrada o spam.');
+      } else {
+        setResendMsg(data.message || 'Error al reenviar el correo.');
+      }
+    } catch (err) {
+      console.error(err);
+      setResendMsg('Error de conexión al reenviar.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -113,9 +151,34 @@ export default function Login() {
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400 font-medium"
+                className={`px-4 py-3 rounded-xl border text-xs font-medium ${
+                  isUnverified
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    : 'bg-red-500/10 border-red-500/30 text-red-400'
+                }`}
               >
-                {error}
+                <div className="flex items-start gap-2">
+                  {isUnverified && <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />}
+                  <span>{error}</span>
+                </div>
+
+                {isUnverified && (
+                  <div className="mt-3 pt-2.5 border-t border-amber-500/20">
+                    {resendMsg ? (
+                      <p className="text-emerald-300 font-semibold">{resendMsg}</p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resending}
+                        className="inline-flex items-center gap-1.5 font-bold text-amber-400 hover:text-amber-300 underline"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        {resending ? 'Reenviando...' : 'Reenviar enlace de activación'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </motion.div>
             )}
 
