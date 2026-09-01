@@ -39,6 +39,7 @@ export default function Navbar() {
   const scrolled = useScrollPosition(20);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [hasAdminBar, setHasAdminBar] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
 
   // Inicializar con datos inyectados por WordPress (si existen) o con valores por defecto
@@ -67,6 +68,17 @@ export default function Navbar() {
     const handleRouteChange = () => setCurrentPath(window.location.pathname);
     window.addEventListener('popstate', handleRouteChange);
 
+    // Detectar si la barra de administración de WordPress (wpadminbar) está presente
+    const checkAdminBar = () => {
+      if (typeof document !== 'undefined') {
+        const adminBar = document.getElementById('wpadminbar');
+        const hasBar = Boolean(adminBar) || document.body.classList.contains('admin-bar');
+        setHasAdminBar(hasBar);
+      }
+    };
+    checkAdminBar();
+    const timer = setTimeout(checkAdminBar, 200);
+
     // Si corre en WordPress pero headerData no vino en window, intentar cargar por REST
     const stbApiUrl = (window as any)?.STB_APP_CONFIG?.stbApiUrl;
     if (stbApiUrl && !(window as any)?.STB_APP_CONFIG?.headerData) {
@@ -80,7 +92,10 @@ export default function Navbar() {
         .catch((err) => console.warn('Could not fetch WordPress header data:', err));
     }
 
-    return () => window.removeEventListener('popstate', handleRouteChange);
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+      clearTimeout(timer);
+    };
   }, []);
 
   const links = headerData.menu && headerData.menu.length > 0 ? headerData.menu : defaultNavLinks;
@@ -97,7 +112,9 @@ export default function Navbar() {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      className={`stb-navbar fixed left-0 right-0 z-50 transition-all duration-500 ${
+        hasAdminBar ? 'top-[32px] max-md:top-[46px]' : 'top-0'
+      } ${
         scrolled
           ? 'bg-deep-950/85 backdrop-blur-xl border-b border-white/10 py-3 shadow-[0_10px_40px_rgba(0,0,0,0.4)]'
           : 'bg-transparent py-5'
@@ -107,12 +124,12 @@ export default function Navbar() {
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent" />
 
       <nav className="container-max section-padding flex items-center justify-between">
-        {/* Logo oficial */}
+        {/* Logo oficial con animación */}
         <RouterLink to="/" className="flex items-center gap-2 group">
           <BrandLogo variant="white" size="sm" />
         </RouterLink>
 
-        {/* Enlaces de navegación principales (Administrados desde WordPress) */}
+        {/* Enlaces de navegación principales (Visual de React conectada con WordPress) */}
         <ul className="hidden md:flex items-center gap-8">
           {links.map((link) => {
             const isHighlighted = link.href.includes('/stblock');
@@ -156,7 +173,7 @@ export default function Navbar() {
           })}
         </ul>
 
-        {/* Acciones de usuario y autenticación (Integradas con Tutor LMS y WP) */}
+        {/* Acciones de usuario y autenticación con estética React */}
         <div className="hidden md:flex items-center gap-3">
           {auth.isLoggedIn ? (
             <div className="relative">
@@ -178,7 +195,7 @@ export default function Navbar() {
                 <span className="max-w-[120px] truncate">{auth.userName || 'Mi Cuenta'}</span>
               </button>
 
-              {/* Menú desplegable de estudiante Tutor LMS */}
+              {/* Menú desplegable interactivo del estudiante */}
               <AnimatePresence>
                 {userDropdownOpen && (
                   <motion.div
@@ -228,7 +245,7 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {/* Menú móvil desplegable */}
+      {/* Menú móvil desplegable animado */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
