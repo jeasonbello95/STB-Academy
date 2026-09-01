@@ -98,6 +98,29 @@ export default function Navbar() {
     };
   }, []);
 
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setUserDropdownOpen(false);
+    setMobileOpen(false);
+
+    try {
+      const restUrl = (window as any).STB_APP_CONFIG?.stbApiUrl || '/wp-json/stb/v1/';
+      await fetch(`${restUrl}auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': (window as any).STB_APP_CONFIG?.nonce || '',
+        },
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.warn('Error al cerrar sesión:', err);
+    } finally {
+      // Redirigir siempre a la portada sin pasar por wp-login.php
+      window.location.href = '/';
+    }
+  };
+
   const links = headerData.menu && headerData.menu.length > 0 ? headerData.menu : defaultNavLinks;
   const { auth } = headerData;
 
@@ -129,7 +152,7 @@ export default function Navbar() {
           <BrandLogo variant="white" size="sm" />
         </RouterLink>
 
-        {/* Enlaces de navegación principales (Visual de React conectada con WordPress) */}
+        {/* Enlaces de navegación principales */}
         <ul className="hidden md:flex items-center gap-8">
           {links.map((link) => {
             const isHighlighted = link.href.includes('/stblock');
@@ -173,7 +196,7 @@ export default function Navbar() {
           })}
         </ul>
 
-        {/* Acciones de usuario y autenticación con estética React */}
+        {/* Acciones de usuario y autenticación */}
         <div className="hidden md:flex items-center gap-3">
           {auth.isLoggedIn ? (
             <div className="relative">
@@ -213,25 +236,26 @@ export default function Navbar() {
                       Panel del Estudiante
                     </a>
                     <div className="my-1 h-px bg-white/10" />
-                    <a
-                      href={auth.logoutUrl || '#'}
-                      className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors"
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors text-left"
                     >
                       <LogOut className="h-4 w-4" />
                       Cerrar Sesión
-                    </a>
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           ) : (
-            <a
-              href={auth.loginUrl || '/login'}
+            <RouterLink
+              to="/login"
               className="group inline-flex items-center gap-2 rounded-full bg-primary-500 px-6 py-2.5 text-sm font-bold tracking-wide text-black hover:bg-primary-400 hover:shadow-[0_0_20px_rgba(84,180,53,0.4)] transition-all"
             >
               <LogIn className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               Acceder
-            </a>
+            </RouterLink>
           )}
         </div>
 
@@ -296,23 +320,33 @@ export default function Navbar() {
 
               <li className="pt-2">
                 {auth.isLoggedIn ? (
-                  <a
-                    href={auth.dashboardUrl || '/dashboard'}
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center justify-center gap-2 text-center text-sm font-bold text-black bg-primary-500 px-4 py-3 rounded-xl hover:bg-primary-400 transition-all"
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Panel de Estudiante ({auth.userName})
-                  </a>
+                  <div className="space-y-2">
+                    <a
+                      href={auth.dashboardUrl || '/dashboard'}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center gap-2 text-center text-sm font-bold text-black bg-primary-500 px-4 py-3 rounded-xl hover:bg-primary-400 transition-all"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Panel de Estudiante ({auth.userName})
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center justify-center gap-2 text-center text-sm font-semibold text-red-400 border border-red-500/30 bg-red-500/10 px-4 py-2.5 rounded-xl hover:bg-red-500/20 transition-all"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Cerrar Sesión
+                    </button>
+                  </div>
                 ) : (
-                  <a
-                    href={auth.loginUrl || '/login'}
+                  <RouterLink
+                    to="/login"
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center justify-center gap-2 text-center text-sm font-bold text-black bg-primary-500 px-4 py-3 rounded-xl hover:bg-primary-400 transition-all"
                   >
                     <LogIn className="h-4 w-4" />
                     Acceder
-                  </a>
+                  </RouterLink>
                 )}
               </li>
             </ul>
