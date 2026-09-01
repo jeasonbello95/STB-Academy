@@ -11,13 +11,11 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 
 function SiteLayout({ children }: { children: ReactNode }) {
-  const isNativeWpHeader = typeof window !== 'undefined' && Boolean((window as any).STB_APP_CONFIG?.nativeHeaderActive);
-
   return (
     <div className="relative min-h-screen bg-deep-950 text-white">
       <AmbientBackground />
-      {!isNativeWpHeader && <Navbar />}
-      <main className={`relative z-10 ${isNativeWpHeader ? 'pt-16 md:pt-20' : ''}`}>{children}</main>
+      <Navbar />
+      <main className="relative z-10">{children}</main>
       <Footer />
     </div>
   );
