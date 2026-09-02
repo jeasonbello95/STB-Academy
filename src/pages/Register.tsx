@@ -5,6 +5,7 @@ import { Mail, Lock, User, ArrowLeft, Eye, EyeOff, Phone, CheckCircle2, Send, Lo
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Mascot } from '@/components/Mascot';
+import { getRecaptchaToken } from '@/utils/recaptcha';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ export default function Register() {
     setLoading(true);
 
     try {
+      const recaptchaToken = await getRecaptchaToken('register');
       const restUrl = (window as any).STB_APP_CONFIG?.stbApiUrl || '/wp-json/stb/v1/';
       const response = await fetch(`${restUrl}auth/register`, {
         method: 'POST',
@@ -58,6 +60,7 @@ export default function Register() {
           email: form.email.trim(),
           phone: form.phone.trim(),
           password: form.password,
+          recaptcha_token: recaptchaToken,
         }),
       });
 
