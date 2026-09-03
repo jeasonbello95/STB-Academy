@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { Menu, X, LogIn, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { navLinks as defaultNavLinks } from '@/data/content';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
@@ -40,7 +41,8 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [hasAdminBar, setHasAdminBar] = useState(false);
-  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   // Inicializar con datos inyectados por WordPress (si existen) o con valores por defecto
   const [headerData, setHeaderData] = useState<HeaderData>(() => {
@@ -65,9 +67,6 @@ export default function Navbar() {
   });
 
   useEffect(() => {
-    const handleRouteChange = () => setCurrentPath(window.location.pathname);
-    window.addEventListener('popstate', handleRouteChange);
-
     // Detectar si la barra de administración de WordPress (wpadminbar) está presente
     const checkAdminBar = () => {
       if (typeof document !== 'undefined') {
@@ -93,7 +92,6 @@ export default function Navbar() {
     }
 
     return () => {
-      window.removeEventListener('popstate', handleRouteChange);
       clearTimeout(timer);
     };
   }, []);
@@ -125,9 +123,13 @@ export default function Navbar() {
   const { auth } = headerData;
 
   const isCurrentActive = (href: string) => {
-    if (href === '/' && (currentPath === '/' || currentPath === '')) return true;
-    if (href !== '/' && currentPath.startsWith(href)) return true;
-    return false;
+    if (!href) return false;
+    if (href === '/' || href === '') {
+      return currentPath === '/' || currentPath === '';
+    }
+    const cleanHref = href.replace(/\/+$/, '');
+    const cleanPath = currentPath.replace(/\/+$/, '');
+    return cleanPath === cleanHref || cleanPath.startsWith(cleanHref + '/');
   };
 
   return (
@@ -155,12 +157,12 @@ export default function Navbar() {
         {/* Enlaces de navegación principales */}
         <ul className="hidden md:flex items-center gap-8">
           {links.map((link) => {
-            const isHighlighted = link.href.includes('/stblock');
+            const isHighlighted = link.href.includes('/stblock') || link.label.toLowerCase().includes('stblock') || link.label.toLowerCase().includes('stb block');
             const isActive = isCurrentActive(link.href);
             const isExternal = link.href.startsWith('http://') || link.href.startsWith('https://');
 
             return (
-              <li key={link.href + link.label}>
+              <li key={link.href + link.label} className="relative">
                 {isExternal ? (
                   <a
                     href={link.href}
@@ -170,24 +172,34 @@ export default function Navbar() {
                   >
                     {link.label}
                   </a>
+                ) : isHighlighted ? (
+                  <RouterLink
+                    to={link.href}
+                    className={`relative overflow-hidden rounded-full px-5 py-2 text-sm font-bold tracking-wide transition-all duration-300 flex items-center justify-center gap-2 group ${
+                      isActive
+                        ? 'border-2 border-primary-400 bg-gradient-to-r from-primary-500/35 via-emerald-500/25 to-primary-500/35 text-white shadow-[0_0_25px_rgba(84,180,53,0.85),inset_0_0_12px_rgba(84,180,53,0.35)] ring-2 ring-primary-400/60 scale-105'
+                        : 'border border-primary-500/50 bg-primary-500/10 text-primary-300 hover:bg-primary-500/25 hover:border-primary-400 hover:text-white hover:shadow-[0_0_20px_rgba(84,180,53,0.6)] hover:scale-105 active:scale-95 active:shadow-[0_0_30px_rgba(84,180,53,0.9)]'
+                    }`}
+                  >
+                    <span className="absolute inset-0 -z-10 bg-gradient-to-r from-primary-500/20 via-cyan-400/20 to-primary-500/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    <span>{link.label}</span>
+                  </RouterLink>
                 ) : (
                   <RouterLink
                     to={link.href}
-                    className={
-                      isHighlighted
-                        ? 'rounded-full border border-primary-500/50 bg-primary-500/10 px-5 py-2 text-sm font-semibold text-primary-300 hover:bg-primary-500/20 hover:border-primary-400 hover:shadow-[0_0_15px_rgba(84,180,53,0.3)] transition-all'
-                        : `font-display text-[0.9rem] font-medium tracking-wide transition-colors relative group ${
-                            isActive ? 'text-white' : 'text-ink-gray-300 hover:text-white'
-                          }`
-                    }
+                    className={`font-display text-[0.9rem] font-medium tracking-wide transition-colors relative py-1 block group ${
+                      isActive ? 'text-white font-semibold' : 'text-ink-gray-300 hover:text-white'
+                    }`}
                   >
-                    {link.label}
-                    {!isHighlighted && (
-                      <span
-                        className={`absolute -bottom-1 left-0 h-[2px] bg-gradient-to-r from-primary-400 to-cyan-400 transition-all duration-300 ${
-                          isActive ? 'w-full' : 'w-0 group-hover:w-full'
-                        }`}
+                    <span>{link.label}</span>
+                    {isActive ? (
+                      <motion.span
+                        layoutId="activeNavIndicator"
+                        className="absolute -bottom-1 left-0 right-0 h-[2.5px] rounded-full bg-gradient-to-r from-primary-400 via-emerald-400 to-cyan-400 shadow-[0_0_12px_rgba(84,180,53,0.85)]"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       />
+                    ) : (
+                      <span className="absolute -bottom-1 left-0 h-[2px] w-0 bg-primary-400/40 transition-all duration-300 group-hover:w-full" />
                     )}
                   </RouterLink>
                 )}
@@ -281,7 +293,7 @@ export default function Navbar() {
           >
             <ul className="section-padding py-4 space-y-3">
               {links.map((link) => {
-                const isHighlighted = link.href.includes('/stblock');
+                const isHighlighted = link.href.includes('/stblock') || link.label.toLowerCase().includes('stblock') || link.label.toLowerCase().includes('stb block');
                 const isActive = isCurrentActive(link.href);
                 const isExternal = link.href.startsWith('http://') || link.href.startsWith('https://');
 
@@ -303,15 +315,22 @@ export default function Navbar() {
                         onClick={() => setMobileOpen(false)}
                         className={
                           isHighlighted
-                            ? 'block text-center rounded-xl border border-primary-500/40 bg-primary-500/10 px-4 py-2.5 text-base font-semibold text-primary-300 hover:bg-primary-500/20 transition-all'
-                            : `block text-base font-medium transition-colors py-2 ${
+                            ? `block text-center rounded-xl px-4 py-2.5 text-base font-bold transition-all ${
                                 isActive
-                                  ? 'text-primary-400 font-semibold'
+                                  ? 'border-2 border-primary-400 bg-primary-500/30 text-white shadow-[0_0_20px_rgba(84,180,53,0.85)]'
+                                  : 'border border-primary-500/40 bg-primary-500/10 text-primary-300 hover:bg-primary-500/20'
+                              }`
+                            : `block text-base font-medium transition-colors py-2 flex items-center justify-between ${
+                                isActive
+                                  ? 'text-white font-semibold border-l-2 border-primary-400 pl-3 bg-primary-500/10 rounded-r-lg'
                                   : 'text-ink-gray-300 hover:text-primary-400'
                               }`
                         }
                       >
-                        {link.label}
+                        <span>{link.label}</span>
+                        {isActive && !isHighlighted && (
+                          <span className="h-2 w-2 rounded-full bg-primary-400 shadow-[0_0_8px_#54b435]" />
+                        )}
                       </RouterLink>
                     )}
                   </li>
