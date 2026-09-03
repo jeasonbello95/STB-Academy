@@ -1,4 +1,4 @@
-import { courses as defaultCourses, type Course } from '@/data/content';
+import type { Course } from '@/data/content';
 import { BookOpen } from 'lucide-react';
 
 interface StbAppConfig {
@@ -67,9 +67,9 @@ export async function fetchCourses(): Promise<DynamicCourse[]> {
       }
     }
   } catch (err) {
-    console.warn('Error fetching courses from WordPress Tutor LMS, using default fallback:', err);
+    console.warn('Error fetching courses from WordPress Tutor LMS:', err);
   }
-  return defaultCourses;
+  return [];
 }
 
 export async function fetchTopCourses(): Promise<DynamicCourse[]> {
