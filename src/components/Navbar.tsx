@@ -169,9 +169,6 @@ export default function Navbar() {
           : 'bg-transparent py-5'
       }`}
     >
-      {/* Línea inferior de acento con gradiente verde */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent" />
-
       <nav className="container-max section-padding flex items-center justify-between">
         {/* Logo oficial con animación */}
         <RouterLink to="/" className="flex items-center gap-2 group">
