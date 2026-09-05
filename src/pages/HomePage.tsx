@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Mascot } from '@/components/Mascot';
+import { PublishedCoursesSummary } from '@/components/sections/PublishedCoursesSummary';
 import {
   Code2,
   Cpu,
@@ -274,6 +275,9 @@ export function HomePage() {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* ================= RESUMEN DE CURSOS PUBLICADOS ================= */}
+      <PublishedCoursesSummary />
 
       {/* ================= APP DOWNLOAD SECTION ================= */}
       <section className="relative py-24 md:py-32 overflow-hidden">
