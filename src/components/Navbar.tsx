@@ -122,14 +122,38 @@ export default function Navbar() {
   const links = headerData.menu && headerData.menu.length > 0 ? headerData.menu : defaultNavLinks;
   const { auth } = headerData;
 
+  const getInternalPath = (href: string) => {
+    if (!href) return '/';
+    if (href.startsWith('http://') || href.startsWith('https://')) {
+      try {
+        const parsed = new URL(href);
+        const host = parsed.hostname.toLowerCase();
+        if (
+          (typeof window !== 'undefined' && parsed.origin === window.location.origin) ||
+          host.includes('stbacademy') ||
+          host.includes('stb.local') ||
+          host.includes('localhost') ||
+          host.includes('127.0.0.1')
+        ) {
+          return parsed.pathname || '/';
+        }
+      } catch {
+        return href;
+      }
+    }
+    return href;
+  };
+
   const isCurrentActive = (href: string) => {
     if (!href) return false;
-    if (href === '/' || href === '') {
-      return currentPath === '/' || currentPath === '';
+    const path = getInternalPath(href);
+    const cleanHref = path.replace(/\/+$/, '') || '/';
+    const cleanCurrent = currentPath.replace(/\/+$/, '') || '/';
+
+    if (cleanHref === '/') {
+      return cleanCurrent === '/';
     }
-    const cleanHref = href.replace(/\/+$/, '');
-    const cleanPath = currentPath.replace(/\/+$/, '');
-    return cleanPath === cleanHref || cleanPath.startsWith(cleanHref + '/');
+    return cleanCurrent === cleanHref || cleanCurrent.startsWith(cleanHref + '/');
   };
 
   return (
@@ -157,38 +181,40 @@ export default function Navbar() {
         {/* Enlaces de navegación principales */}
         <ul className="hidden md:flex items-center gap-8">
           {links.map((link) => {
-            const isHighlighted = link.href.includes('/stblock') || link.label.toLowerCase().includes('stblock') || link.label.toLowerCase().includes('stb block');
+            const targetPath = getInternalPath(link.href);
+            const isExternal = targetPath.startsWith('http://') || targetPath.startsWith('https://');
+            const isHighlighted = targetPath.includes('/stblock') || link.label.toLowerCase().includes('stblock') || link.label.toLowerCase().includes('stb block');
             const isActive = isCurrentActive(link.href);
-            const isExternal = link.href.startsWith('http://') || link.href.startsWith('https://');
 
             return (
               <li key={link.href + link.label} className="relative">
                 {isExternal ? (
                   <a
-                    href={link.href}
+                    href={targetPath}
                     target={link.target || '_self'}
                     rel="noopener noreferrer"
-                    className="font-display text-[0.9rem] font-medium tracking-wide text-ink-gray-300 hover:text-white transition-colors"
+                    className="font-display text-[0.95rem] font-medium tracking-wide text-ink-gray-300 hover:text-white transition-colors"
                   >
                     {link.label}
                   </a>
                 ) : isHighlighted ? (
                   <RouterLink
-                    to={link.href}
-                    className={`relative overflow-hidden rounded-full px-5 py-2 text-sm font-bold tracking-wide transition-all duration-300 flex items-center justify-center gap-2 group ${
+                    to={targetPath}
+                    className={`relative overflow-hidden rounded-full px-5 py-2 text-xs font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 group ${
                       isActive
                         ? 'border-2 border-primary-400 bg-gradient-to-r from-primary-500/35 via-emerald-500/25 to-primary-500/35 text-white shadow-[0_0_25px_rgba(84,180,53,0.85),inset_0_0_12px_rgba(84,180,53,0.35)] ring-2 ring-primary-400/60 scale-105'
                         : 'border border-primary-500/50 bg-primary-500/10 text-primary-300 hover:bg-primary-500/25 hover:border-primary-400 hover:text-white hover:shadow-[0_0_20px_rgba(84,180,53,0.6)] hover:scale-105 active:scale-95 active:shadow-[0_0_30px_rgba(84,180,53,0.9)]'
                     }`}
                   >
                     <span className="absolute inset-0 -z-10 bg-gradient-to-r from-primary-500/20 via-cyan-400/20 to-primary-500/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse"></span>
                     <span>{link.label}</span>
                   </RouterLink>
                 ) : (
                   <RouterLink
-                    to={link.href}
-                    className={`font-display text-[0.9rem] font-medium tracking-wide transition-colors relative py-1 block group ${
-                      isActive ? 'text-white font-semibold' : 'text-ink-gray-300 hover:text-white'
+                    to={targetPath}
+                    className={`font-display text-[0.95rem] tracking-wide transition-colors relative py-1.5 px-1 block group ${
+                      isActive ? 'text-white font-bold' : 'text-ink-gray-300 hover:text-white font-medium'
                     }`}
                   >
                     <span>{link.label}</span>
@@ -199,7 +225,7 @@ export default function Navbar() {
                         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       />
                     ) : (
-                      <span className="absolute -bottom-1 left-0 h-[2px] w-0 bg-primary-400/40 transition-all duration-300 group-hover:w-full" />
+                      <span className="absolute -bottom-1 left-0 h-[2px] w-0 bg-primary-400/50 transition-all duration-300 group-hover:w-full rounded-full shadow-[0_0_8px_rgba(84,180,53,0.6)]" />
                     )}
                   </RouterLink>
                 )}
