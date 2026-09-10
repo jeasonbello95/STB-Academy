@@ -47,27 +47,47 @@ export function CoursesPage() {
   // Extraer categorías dinámicamente según los cursos publicados en Tutor LMS
   const categories = useMemo(() => {
     const cats = new Set<string>();
+    let hasPresencial = false;
+
     coursesList.forEach((c) => {
+      if (c.is_presencial || c.tag === 'Presencial' || (Array.isArray(c.tags) && c.tags.some(t => t.toLowerCase() === 'presencial'))) {
+        hasPresencial = true;
+      }
       if (c.category) cats.add(c.category);
       if (Array.isArray(c.categories)) {
         c.categories.forEach((cat) => cats.add(cat));
       }
     });
-    return ['Todos', ...Array.from(cats)];
+
+    const list = ['Todos'];
+    if (hasPresencial) {
+      list.push('Presencial');
+    }
+    Array.from(cats).forEach((cat) => {
+      if (cat !== 'Presencial') list.push(cat);
+    });
+    return list;
   }, [coursesList]);
 
   // Filtrar cursos según categoría activa y búsqueda
   const filteredCourses = useMemo(() => {
     return coursesList.filter((c) => {
+      const isPresencial =
+        Boolean(c.is_presencial) ||
+        c.tag === 'Presencial' ||
+        (Array.isArray(c.tags) && c.tags.some(t => t.toLowerCase() === 'presencial'));
+
       const matchesCategory =
         activeCategory === 'Todos' ||
+        (activeCategory === 'Presencial' && isPresencial) ||
         c.category === activeCategory ||
         (Array.isArray(c.categories) && c.categories.includes(activeCategory));
 
       const matchesSearch =
         !searchQuery.trim() ||
         c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.description.toLowerCase().includes(searchQuery.toLowerCase());
+        c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (isPresencial && 'presencial'.includes(searchQuery.toLowerCase()));
 
       return matchesCategory && matchesSearch;
     });
@@ -238,9 +258,17 @@ export function CoursesPage() {
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
                         />
-                        <span className="absolute top-2 left-2 rounded-md bg-deep-950/85 px-2.5 py-0.5 text-[11px] font-semibold text-primary-300 border border-white/10 backdrop-blur-sm">
-                          {course.category}
-                        </span>
+                        <div className="absolute top-2 left-2 flex flex-wrap gap-1 z-10">
+                          <span className="rounded-md bg-deep-950/85 px-2.5 py-0.5 text-[11px] font-semibold text-primary-300 border border-white/10 backdrop-blur-sm">
+                            {course.category}
+                          </span>
+                          {(course.is_presencial || course.tag === 'Presencial') && (
+                            <span className="rounded-md bg-primary-500/20 px-2 py-0.5 text-[10px] font-bold text-primary-300 border border-primary-500/40 backdrop-blur-sm shadow-sm flex items-center gap-1">
+                              <Sparkles className="h-3 w-3 text-primary-400" />
+                              Presencial
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Contenido */}
@@ -275,6 +303,13 @@ export function CoursesPage() {
                           <p className="mt-2 text-xs text-ink-gray-400 leading-relaxed line-clamp-2">
                             {course.description}
                           </p>
+
+                          {(course.is_presencial || course.tag === 'Presencial') && course.location && (
+                            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-gray-400">
+                              <span className="text-primary-400">📍</span>
+                              <span className="truncate">{course.location}</span>
+                            </p>
+                          )}
                         </div>
 
                         {/* Footer de la tarjeta */}

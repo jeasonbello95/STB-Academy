@@ -34,6 +34,7 @@ export function EventsPage() {
   const [events, setEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(() => new Date());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   useEffect(() => {
     fetchEvents().then((data) => {
@@ -81,6 +82,14 @@ export function EventsPage() {
     return map;
   }, [monthEvents]);
 
+  // Eventos filtrados para la vista (por día seleccionado o todo el mes)
+  const displayedEvents = useMemo(() => {
+    if (selectedDay !== null) {
+      return daysWithEvents[selectedDay] || [];
+    }
+    return monthEvents;
+  }, [selectedDay, daysWithEvents, monthEvents]);
+
   const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7; // lunes = 0
   const totalDays = new Date(year, month + 1, 0).getDate();
 
@@ -94,8 +103,14 @@ export function EventsPage() {
     ...Array.from({ length: totalDays }, (_, i) => i + 1),
   ];
 
-  const goPrev = () => setView(new Date(year, month - 1, 1));
-  const goNext = () => setView(new Date(year, month + 1, 1));
+  const goPrev = () => {
+    setView(new Date(year, month - 1, 1));
+    setSelectedDay(null);
+  };
+  const goNext = () => {
+    setView(new Date(year, month + 1, 1));
+    setSelectedDay(null);
+  };
 
   return (
     <div className="min-h-screen pt-32">
@@ -225,21 +240,32 @@ export function EventsPage() {
                     const dayKey = `${monthKey}-${pad(day)}`;
                     const hasEvents = !!daysWithEvents[day];
                     const isToday = dayKey === todayKey;
+                    const isSelected = selectedDay === day;
+
                     return (
-                      <motion.div
+                      <motion.button
                         key={dayKey}
-                        whileHover={{ scale: 1.1 }}
-                        className={`relative flex h-9 cursor-default items-center justify-center rounded-xl text-sm transition-colors ${
-                          hasEvents
-                            ? 'bg-primary-500/15 font-semibold text-primary-300'
+                        type="button"
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setSelectedDay((prev) => (prev === day ? null : day))}
+                        aria-label={`Día ${day}${hasEvents ? ' con cursos presenciales' : ''}`}
+                        className={`relative flex h-9 cursor-pointer items-center justify-center rounded-xl text-sm transition-all select-none ${
+                          isSelected
+                            ? 'bg-primary-500 text-black font-extrabold shadow-[0_0_15px_rgba(84,180,53,0.5)] ring-2 ring-primary-300'
+                            : hasEvents
+                            ? 'bg-primary-500/20 font-semibold text-primary-300 hover:bg-primary-500/30'
                             : 'text-ink-300 hover:bg-white/5'
-                        } ${isToday ? 'ring-2 ring-primary-400' : ''}`}
+                        } ${isToday && !isSelected ? 'ring-2 ring-primary-400' : ''}`}
                       >
                         {day}
-                        {hasEvents && (
+                        {hasEvents && !isSelected && (
                           <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-primary-400 shadow-[0_0_6px_rgba(84,180,53,0.9)]" />
                         )}
-                      </motion.div>
+                        {hasEvents && isSelected && (
+                          <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-black shadow-sm" />
+                        )}
+                      </motion.button>
                     );
                   })}
                 </motion.div>
@@ -257,45 +283,58 @@ export function EventsPage() {
                 </div>
               </motion.div>
 
-              {/* Eventos del mes seleccionado */}
+              {/* Eventos del mes o día seleccionado */}
               <motion.div
                 initial={{ opacity: 0, x: 30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: '-80px' }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
               >
-                <div className="mb-6 flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary-500/20 bg-primary-500/10">
-                    <CalendarDays className="h-6 w-6 text-primary-400" />
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary-500/20 bg-primary-500/10">
+                      <CalendarDays className="h-6 w-6 text-primary-400" />
+                    </div>
+                    <div>
+                      <h2 className="font-display text-2xl font-bold text-white">
+                        {selectedDay !== null
+                          ? `${selectedDay} de ${monthNames[month]} ${year}`
+                          : `${monthNames[month]} ${year}`}
+                      </h2>
+                      <p className="text-sm text-ink-500">
+                        {displayedEvents.length} curso{displayedEvents.length !== 1 ? 's' : ''} presencial{displayedEvents.length !== 1 ? 'es' : ''}
+                        {selectedDay !== null ? ' programado para este día' : ''}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-display text-2xl font-bold text-white">
-                      {monthNames[month]} {year}
-                    </h2>
-                    <p className="text-sm text-ink-500">
-                      {monthEvents.length} evento
-                      {monthEvents.length !== 1 && 's'}
-                    </p>
-                  </div>
+
+                  {selectedDay !== null && (
+                    <button
+                      onClick={() => setSelectedDay(null)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-primary-500/30 bg-primary-500/10 px-3.5 py-2 text-xs font-semibold text-primary-300 hover:bg-primary-500/20 hover:border-primary-400 transition-all shadow-sm"
+                    >
+                      <span>Ver todo el mes ({monthEvents.length})</span>
+                    </button>
+                  )}
                 </div>
 
                 <AnimatePresence mode="wait">
-                  {monthEvents.length > 0 ? (
+                  {displayedEvents.length > 0 ? (
                     <motion.div
-                      key={monthKey}
+                      key={selectedDay !== null ? `${monthKey}-${selectedDay}` : monthKey}
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -14 }}
                       transition={{ duration: 0.3 }}
                       className="space-y-4"
                     >
-                      {monthEvents.map((ev) => (
-                        <EventCard key={ev.id} event={ev} index={0} />
+                      {displayedEvents.map((ev, index) => (
+                        <EventCard key={ev.id || index} event={ev} index={index} />
                       ))}
                     </motion.div>
                   ) : (
                     <motion.div
-                      key={`empty-${monthKey}`}
+                      key={`empty-${monthKey}-${selectedDay}`}
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -14 }}
@@ -304,11 +343,30 @@ export function EventsPage() {
                     >
                       <CalendarDays className="h-10 w-10 text-ink-600" />
                       <p className="mt-3 font-display text-lg font-semibold text-white">
-                        Sin eventos este mes
+                        {selectedDay !== null
+                          ? `Sin cursos presenciales el ${selectedDay} de ${monthNames[month]}`
+                          : 'Sin cursos presenciales este mes'}
                       </p>
-                      <p className="mt-1 text-sm text-ink-500">
-                        Explora otros meses para ver próximos talleres.
+                      <p className="mt-1 text-sm text-ink-500 max-w-sm">
+                        {selectedDay !== null
+                          ? 'Selecciona otro día marcado en el calendario o mira todos los cursos del mes.'
+                          : 'Explora otros meses en el calendario o descubre todos los programas de STB Academy.'}
                       </p>
+                      {selectedDay !== null ? (
+                        <button
+                          onClick={() => setSelectedDay(null)}
+                          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-xs font-bold text-black hover:bg-primary-400 transition-all"
+                        >
+                          Ver todos los cursos del mes
+                        </button>
+                      ) : (
+                        <a
+                          href="/cursos"
+                          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-xs font-bold text-black hover:bg-primary-400 transition-all"
+                        >
+                          Explorar catálogo de cursos
+                        </a>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

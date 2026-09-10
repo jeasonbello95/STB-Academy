@@ -129,10 +129,17 @@ export function PublishedCoursesSummary() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-deep-950 via-deep-950/30 to-transparent" />
 
-                    {/* Categoría Badge */}
-                    <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-[#54B435]/30 bg-deep-950/80 px-3 py-1 text-xs font-semibold text-primary-300 backdrop-blur-md">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" />
-                      <span>{decodeHtml(course.category)}</span>
+                    {/* Categoría y Presencial Badges */}
+                    <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-10">
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-[#54B435]/30 bg-deep-950/80 px-3 py-1 text-xs font-semibold text-primary-300 backdrop-blur-md">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" />
+                        <span>{decodeHtml(course.category)}</span>
+                      </div>
+                      {(course.is_presencial || course.tag === 'Presencial') && (
+                        <div className="inline-flex items-center gap-1 rounded-full border border-primary-500/40 bg-primary-500/20 px-2.5 py-1 text-xs font-bold text-primary-300 backdrop-blur-md shadow-sm">
+                          <span>Presencial</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Precio Badge */}

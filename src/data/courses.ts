@@ -28,6 +28,10 @@ export interface DynamicCourse extends Course {
   rating_count?: number;
   permalink?: string;
   categories?: string[];
+  tags?: string[];
+  is_presencial?: boolean;
+  event_date?: string;
+  location?: string;
 }
 
 export async function fetchCourses(): Promise<DynamicCourse[]> {
@@ -49,7 +53,11 @@ export async function fetchCourses(): Promise<DynamicCourse[]> {
           price: item.price || 'Gratis',
           price_raw: item.price_raw || 0,
           is_free: Boolean(item.is_free),
-          tag: item.tag || 'Tutor LMS',
+          tag: item.tag || (item.is_presencial ? 'Presencial' : 'Tutor LMS'),
+          tags: Array.isArray(item.tags) ? item.tags : [],
+          is_presencial: Boolean(item.is_presencial),
+          event_date: item.event_date || item.date,
+          location: item.location,
           image: item.image || 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80',
           category: item.category || 'General',
           categories: Array.isArray(item.categories) ? item.categories : [item.category || 'General'],
