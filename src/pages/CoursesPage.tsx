@@ -304,11 +304,31 @@ export function CoursesPage() {
                             {course.description}
                           </p>
 
-                          {(course.is_presencial || course.tag === 'Presencial') && course.location && (
-                            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-gray-400">
-                              <span className="text-primary-400">📍</span>
-                              <span className="truncate">{course.location}</span>
-                            </p>
+                          {(course.is_presencial || course.tag === 'Presencial') && (course.location || course.days || course.schedule) && (
+                            <div className="mt-2.5 space-y-1 text-[11px] text-ink-gray-400">
+                              {course.location && (
+                                <p className="flex items-center gap-1.5">
+                                  <span className="text-primary-400">📍</span>
+                                  <span className="truncate">{course.location}</span>
+                                </p>
+                              )}
+                              {(course.days || course.schedule) && (
+                                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                  {course.days && (
+                                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-0.5 font-mono text-cyan-300 border border-white/5">
+                                      <span>🗓️</span>
+                                      <span>{course.days}</span>
+                                    </span>
+                                  )}
+                                  {course.schedule && (
+                                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-0.5 font-mono text-primary-300 border border-white/5">
+                                      <span>⏰</span>
+                                      <span>{course.schedule}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
 
