@@ -4,9 +4,10 @@ import type { CourseEvent } from '@/types';
 interface EventCardProps {
   event: CourseEvent;
   index: number;
+  onSelect?: (event: CourseEvent) => void;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onSelect }: EventCardProps) {
   const dateObj = new Date(`${event.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? event.date
@@ -17,10 +18,18 @@ export function EventCard({ event }: EventCardProps) {
         year: 'numeric',
       });
 
-  const courseUrl = event.permalink || `/courses/${event.id}`;
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onSelect) {
+      onSelect(event);
+    }
+  };
 
   return (
-    <article className="group relative flex flex-col sm:flex-row items-stretch rounded-2xl border border-white/10 bg-deep-900/70 p-5 backdrop-blur-xl transition-all duration-300 hover:border-primary-500/50 hover:shadow-[0_8px_30px_rgba(84,180,53,0.15)] gap-5 overflow-hidden">
+    <article
+      onClick={handleClick}
+      className="group relative flex flex-col sm:flex-row items-stretch rounded-2xl border border-white/10 bg-deep-900/70 p-5 backdrop-blur-xl transition-all duration-300 hover:border-primary-500/50 hover:shadow-[0_8px_30px_rgba(84,180,53,0.15)] gap-5 overflow-hidden cursor-pointer"
+    >
       {/* Imagen del curso presencial */}
       {event.image && (
         <div className="relative h-44 sm:h-auto sm:w-44 shrink-0 rounded-xl overflow-hidden bg-deep-950 border border-white/10">
@@ -54,7 +63,7 @@ export function EventCard({ event }: EventCardProps) {
               )}
             </div>
             {(event.schedule || (event.duration && event.duration !== 'Presencial')) && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-ink-300 bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+              <span className="inline-flex items-center gap-1 text-[11px] text-ink-300 bg-white/5 px-2 py-0.5 rounded-md border border-white/5 font-mono">
                 <Clock className="h-3 w-3 text-primary-400" />
                 {event.schedule || event.duration}
               </span>
@@ -63,9 +72,7 @@ export function EventCard({ event }: EventCardProps) {
 
           {/* Título */}
           <h3 className="font-display text-lg sm:text-xl font-bold text-white group-hover:text-primary-300 transition-colors leading-snug">
-            <a href={courseUrl} className="hover:underline">
-              {event.title}
-            </a>
+            <span>{event.title}</span>
           </h3>
 
           {/* Descripción */}
@@ -82,7 +89,7 @@ export function EventCard({ event }: EventCardProps) {
           </p>
         </div>
 
-        {/* Footer con precio y botón de inscripción / detalle */}
+        {/* Footer con precio y botón de información presencial */}
         <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
           <div>
             <span className="text-[10px] uppercase text-ink-500 block font-semibold">
@@ -93,13 +100,14 @@ export function EventCard({ event }: EventCardProps) {
             </span>
           </div>
 
-          <a
-            href={courseUrl}
+          <button
+            type="button"
+            onClick={handleClick}
             className="inline-flex items-center gap-2 rounded-xl bg-primary-500 hover:bg-primary-400 text-black font-bold text-xs px-4 py-2.5 shadow-[0_0_12px_rgba(84,180,53,0.3)] transition-all group/btn"
           >
-            <span>Ver Curso</span>
+            <span>Detalles del Curso</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
-          </a>
+          </button>
         </div>
       </div>
     </article>

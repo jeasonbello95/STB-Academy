@@ -7,6 +7,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { EventCard } from '@/components/ui/EventCard';
+import { EventDetailModal } from '@/components/EventDetailModal';
 import { Mascot } from '@/components/Mascot';
 import { fetchEvents } from '@/data/events';
 import type { CourseEvent } from '@/types';
@@ -35,6 +36,7 @@ export function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CourseEvent | null>(null);
 
   useEffect(() => {
     fetchEvents().then((data) => {
@@ -329,7 +331,12 @@ export function EventsPage() {
                       className="space-y-4"
                     >
                       {displayedEvents.map((ev, index) => (
-                        <EventCard key={ev.id || index} event={ev} index={index} />
+                        <EventCard
+                          key={ev.id || index}
+                          event={ev}
+                          index={index}
+                          onSelect={(event) => setSelectedEvent(event)}
+                        />
                       ))}
                     </motion.div>
                   ) : (
@@ -375,6 +382,12 @@ export function EventsPage() {
           )}
         </div>
       </section>
+
+      {/* Modal React de Información Detallada del Curso Presencial */}
+      <EventDetailModal
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
     </div>
   );
 }
