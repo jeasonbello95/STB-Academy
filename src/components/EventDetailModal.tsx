@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -40,6 +41,7 @@ export function EventDetailModal({
   initialTab = 'details',
   onClose,
 }: EventDetailModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'register' | 'success'>(initialTab);
   const [copiedShare, setCopiedShare] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -65,7 +67,12 @@ export function EventDetailModal({
   const [notes, setNotes] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(true);
 
-  // Inicializar o resetear cuando cambia el evento
+  // Asegurar montaje en cliente para createPortal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Inicializar o resetear cuando cambia el evento o la pestaña inicial
   useEffect(() => {
     if (event) {
       setActiveTab(initialTab);
@@ -75,7 +82,7 @@ export function EventDetailModal({
     }
   }, [event, initialTab]);
 
-  // Cerrar con tecla Escape
+  // Cerrar con tecla Escape y bloquear scroll del body
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -92,7 +99,7 @@ export function EventDetailModal({
     };
   }, [event, onClose]);
 
-  if (!event) return null;
+  if (!event || !mounted) return null;
 
   const dateObj = new Date(`${event.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
@@ -301,16 +308,17 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
     }
   };
 
-  return (
+  // Renderizar usando createPortal directamente en document.body para evitar que el Header o wpadminbar lo tapen
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto print:p-0 print:overflow-visible">
-        {/* Backdrop con desenfoque */}
+      <div className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-5 pt-20 sm:pt-16 pb-8 overflow-y-auto print:p-0 print:overflow-visible">
+        {/* Backdrop con desenfoque superpuesto al 100% sobre toda la página */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity print:hidden"
+          className="fixed inset-0 bg-black/90 backdrop-blur-md transition-opacity print:hidden"
         />
 
         {/* Ventana Modal React */}
@@ -319,7 +327,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 20 }}
           transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
-          className="relative w-full max-w-2xl rounded-3xl border border-white/15 bg-[#070c14] shadow-[0_25px_70px_rgba(0,0,0,0.85),0_0_40px_rgba(84,180,53,0.18)] overflow-hidden flex flex-col max-h-[92vh] z-10 print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black"
+          className="relative w-full max-w-2xl rounded-3xl border border-white/15 bg-[#070c14] shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(84,180,53,0.2)] overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[88vh] z-10 my-auto print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black"
         >
           {/* Barra superior de acento degradado */}
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-[#54B435] to-cyan-400 shrink-0 print:hidden" />
@@ -328,7 +336,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
           <button
             onClick={onClose}
             aria-label="Cerrar ventana"
-            className="absolute top-4 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 border border-white/20 text-slate-300 hover:text-white hover:bg-black/80 hover:border-white/40 transition-all backdrop-blur-sm print:hidden"
+            className="absolute top-4 right-4 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/80 border border-white/20 text-slate-300 hover:text-white hover:bg-black hover:border-white/40 transition-all backdrop-blur-sm print:hidden cursor-pointer shadow-lg"
           >
             <X className="h-4 w-4" />
           </button>
@@ -554,7 +562,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-1/3 sm:w-auto px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all"
+                    className="w-1/3 sm:w-auto px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all cursor-pointer"
                   >
                     Cerrar
                   </button>
@@ -577,30 +585,30 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
           {/* ========================================================================= */}
           {activeTab === 'register' && (
             <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-              {/* Encabezado del Formulario */}
-              <div className="p-5 border-b border-white/10 bg-black/40 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
+              {/* Encabezado del Formulario (con pr-14 para no colisionar con el botón X y fondo opaco) */}
+              <div className="p-4 sm:p-5 pr-14 border-b border-white/10 bg-[#070c14] flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-md">
+                <div className="flex items-center gap-3 min-w-0">
                   <button
                     type="button"
                     onClick={() => setActiveTab('details')}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                     title="Volver a los detalles del curso"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </button>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1.5 text-xs font-mono text-[#54B435]">
-                      <Zap className="h-3 w-3 fill-[#54B435]" />
-                      <span>Formulario Oficial de Admisión</span>
+                      <Zap className="h-3 w-3 fill-[#54B435] shrink-0" />
+                      <span className="truncate">Formulario Oficial de Admisión</span>
                     </div>
-                    <h3 className="font-display text-lg font-bold text-white leading-tight">
+                    <h3 className="font-display text-base sm:text-lg font-bold text-white leading-tight truncate">
                       Inscripción Inmediata
                     </h3>
                   </div>
                 </div>
 
-                <div className="text-right hidden sm:block">
-                  <span className="text-xs text-slate-400 block truncate max-w-[220px]">
+                <div className="text-right hidden sm:block shrink-0 pl-3">
+                  <span className="text-xs text-slate-400 block truncate max-w-[180px]">
                     {event.title}
                   </span>
                   <span className="text-xs font-bold text-[#54B435]">
@@ -901,7 +909,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                               const activeM = paymentMethods.find((m) => m.id === paymentMethod);
                               if (activeM) handleCopyPaymentInfo(activeM.details);
                             }}
-                            className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-white transition-colors"
+                            className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-white transition-colors cursor-pointer"
                           >
                             <Copy className="h-3 w-3" />
                             <span>{copiedPayment ? 'Copiado' : 'Copiar datos'}</span>
@@ -965,7 +973,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                 <button
                   type="button"
                   onClick={() => setActiveTab('details')}
-                  className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
                 >
                   ← Volver
                 </button>
@@ -1023,7 +1031,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
                 >
                   {copiedCode ? (
                     <>
@@ -1105,7 +1113,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   <button
                     type="button"
                     onClick={handlePrint}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
                   >
                     <Printer className="h-3.5 w-3.5" />
                     <span>Imprimir Resumen</span>
@@ -1114,7 +1122,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors"
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors cursor-pointer"
                   >
                     <span>Cerrar</span>
                   </button>
@@ -1124,6 +1132,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
           )}
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
