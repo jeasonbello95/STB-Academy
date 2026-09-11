@@ -37,6 +37,12 @@ export function EventsPage() {
   const [view, setView] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CourseEvent | null>(null);
+  const [modalTab, setModalTab] = useState<'details' | 'register'>('details');
+
+  const handleSelectEvent = (event: CourseEvent, tab: 'details' | 'register' = 'details') => {
+    setSelectedEvent(event);
+    setModalTab(tab);
+  };
 
   useEffect(() => {
     fetchEvents().then((data) => {
@@ -335,7 +341,7 @@ export function EventsPage() {
                           key={ev.id || index}
                           event={ev}
                           index={index}
-                          onSelect={(event) => setSelectedEvent(event)}
+                          onSelect={(event, tab) => handleSelectEvent(event, tab)}
                         />
                       ))}
                     </motion.div>
@@ -386,6 +392,7 @@ export function EventsPage() {
       {/* Modal React de Información Detallada del Curso Presencial */}
       <EventDetailModal
         event={selectedEvent}
+        initialTab={modalTab}
         onClose={() => setSelectedEvent(null)}
       />
     </div>

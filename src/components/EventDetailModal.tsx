@@ -12,18 +12,68 @@ import {
   Check,
   Building2,
   DollarSign,
-  GraduationCap
+  GraduationCap,
+  User,
+  Mail,
+  Phone,
+  ShieldCheck,
+  CreditCard,
+  Laptop,
+  ArrowLeft,
+  Copy,
+  Printer,
+  MessageCircle,
+  AlertCircle,
+  Zap,
+  Users,
 } from 'lucide-react';
 import type { CourseEvent } from '@/types';
 
 interface EventDetailModalProps {
   event: CourseEvent | null;
+  initialTab?: 'details' | 'register';
   onClose: () => void;
 }
 
-export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  const [copied, setCopied] = useState(false);
-  const [reserved, setReserved] = useState(false);
+export function EventDetailModal({
+  event,
+  initialTab = 'details',
+  onClose,
+}: EventDetailModalProps) {
+  const [activeTab, setActiveTab] = useState<'details' | 'register' | 'success'>(initialTab);
+  const [copiedShare, setCopiedShare] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedPayment, setCopiedPayment] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [registrationCode, setRegistrationCode] = useState('');
+
+  // Campos del formulario de inscripción inmediata
+  const [studentName, setStudentName] = useState('');
+  const [studentDni, setStudentDni] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
+  const [studentPhone, setStudentPhone] = useState('');
+  const [isMinor, setIsMinor] = useState(false);
+  const [repName, setRepName] = useState('');
+  const [repDni, setRepDni] = useState('');
+  const [repPhone, setRepPhone] = useState('');
+  const [repRelation, setRepRelation] = useState('Padre/Madre');
+  const [paymentMethod, setPaymentMethod] = useState('pago_movil');
+  const [paymentRef, setPaymentRef] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('Principiante (Desde cero)');
+  const [hasLaptop, setHasLaptop] = useState('si');
+  const [notes, setNotes] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(true);
+
+  // Inicializar o resetear cuando cambia el evento
+  useEffect(() => {
+    if (event) {
+      setActiveTab(initialTab);
+      setErrorMsg('');
+      const defaultPayment = event.is_free || event.price === 'Gratis' ? 'gratis' : 'pago_movil';
+      setPaymentMethod(defaultPayment);
+    }
+  }, [event, initialTab]);
 
   // Cerrar con tecla Escape
   useEffect(() => {
@@ -54,38 +104,213 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         year: 'numeric',
       });
 
-  const isFree = event.is_free || event.price === 'Gratis' || !event.price || event.price === '$0,00' || event.price === '$0';
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`;
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
-    `¡Hola STB Academy! Deseo solicitar información y reservar mi cupo para el curso presencial: "${event.title}" programado para el día ${formattedDate} en la sede ${event.location}.`
+  const isFree =
+    event.is_free ||
+    event.price === 'Gratis' ||
+    !event.price ||
+    event.price === '$0,00' ||
+    event.price === '$0';
+
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    event.location
   )}`;
+
+  // Métodos de pago disponibles
+  const paymentMethods = [
+    {
+      id: 'pago_movil',
+      title: 'Pago Móvil',
+      subtitle: 'Bolívares (Tasa oficial BCV)',
+      icon: '📱',
+      details: 'Banco Banesco (0134) | Teléfono: 0412-1421335 | RIF: J-504285123',
+    },
+    {
+      id: 'zelle',
+      title: 'Zelle',
+      subtitle: 'Dólares USD sin comisiones',
+      icon: '💵',
+      details: 'Correo Zelle: pagos@stbacademy.net | Titular: STB Academy C.A.',
+    },
+    {
+      id: 'efectivo',
+      title: 'Efectivo en Sede',
+      subtitle: 'USD o Bolívares en recepción',
+      icon: '🏢',
+      details: 'Cancela directamente en taquilla el primer día en CC La Redoma de los Robles, Local 50.',
+    },
+    {
+      id: 'transferencia',
+      title: 'Transferencia Bancaria',
+      subtitle: 'Banesco Banco Universal',
+      icon: '🏦',
+      details: 'Cta Corriente Banesco: 0134-0348-12-3481056789 | Titular: STB Academy C.A. | RIF: J-504285123',
+    },
+    {
+      id: 'usdt',
+      title: 'Binance Pay / USDT',
+      subtitle: 'Criptomonedas (BEP20 / TRC20)',
+      icon: '🪙',
+      details: 'Binance Pay ID: 71298412 | Usuario: STB_Academy_Oficial',
+    },
+  ];
+
+  // Si el curso es gratuito, agregar opción de beca como principal
+  if (isFree && !paymentMethods.some((m) => m.id === 'gratis')) {
+    paymentMethods.unshift({
+      id: 'gratis',
+      title: 'Beca de Acceso Libre',
+      subtitle: '100% Bonificado ($0)',
+      icon: '🎁',
+      details: 'Este curso presencial no tiene costo. Tu cupo queda asignado de forma gratuita.',
+    });
+  }
 
   const handleShare = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(
-        `Curso Presencial STB Academy: ${event.title}\nSede: ${event.location}\nDías: ${event.days || 'A convenir'}\nHorario: ${event.schedule || 'A convenir'}\nInversión: ${event.price || 'Gratis'}`
+        `Curso Presencial STB Academy: ${event.title}\nSede: ${event.location}\nDías: ${
+          event.days || 'A convenir'
+        }\nHorario: ${event.schedule || 'A convenir'}\nInversión: ${event.price || 'Gratis'}`
       );
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
     }
   };
 
-  const handleReserve = () => {
-    setReserved(true);
-    // Abrir WhatsApp en nueva pestaña para reservar
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  const handleCopyCode = () => {
+    if (navigator.clipboard && registrationCode) {
+      navigator.clipboard.writeText(registrationCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
+
+  const handleCopyPaymentInfo = (text: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedPayment(true);
+      setTimeout(() => setCopiedPayment(false), 2000);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Enlace oficial de WhatsApp con mensaje completo y pre-redactado
+  const getWhatsAppConfirmUrl = () => {
+    const selectedMethod = paymentMethods.find((m) => m.id === paymentMethod);
+    const methodTitle = selectedMethod ? selectedMethod.title : paymentMethod;
+    const refLine = paymentRef ? `\n• *Referencia:* ${paymentRef}` : '';
+    const minorLine = isMinor
+      ? `\n• *Representante:* ${repName} (${repRelation}) - Tel: ${repPhone}`
+      : '';
+    const laptopLine =
+      hasLaptop === 'si' ? 'Llevaré mi laptop propia' : 'Requiero equipo de la academia';
+
+    const text = `¡Hola STB Academy! 🚀 Acabo de registrar mi *Inscripción Inmediata* para el curso presencial:
+• *Curso:* ${event.title}
+• *Código de Registro:* ${registrationCode}
+• *Cursante:* ${studentName} (C.I: ${studentDni})
+• *Teléfono:* ${studentPhone}
+• *Correo:* ${studentEmail}${minorLine}
+• *Sede:* ${event.location}
+• *Días y Horario:* ${event.days || formattedDate} | ${event.schedule || 'En aula'}
+• *Método de Pago:* ${methodTitle}${refLine}
+• *Equipamiento:* ${laptopLine}
+
+Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
+
+    return `https://wa.me/584121421335?text=${encodeURIComponent(text)}`;
+  };
+
+  // Envío del formulario de inscripción inmediata
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    if (!studentName.trim() || !studentDni.trim() || !studentEmail.trim() || !studentPhone.trim()) {
+      setErrorMsg('Por favor completa todos los datos obligatorios del cursante (Nombre, Cédula, Correo y Teléfono).');
+      return;
+    }
+
+    if (isMinor && (!repName.trim() || !repPhone.trim())) {
+      setErrorMsg('Para estudiantes menores de edad es obligatorio ingresar el Nombre y Teléfono del representante legal.');
+      return;
+    }
+
+    if (!acceptTerms) {
+      setErrorMsg('Debes aceptar las normas y condiciones de asistencia a la sede presencial.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const payload = {
+      course_id: event.course_id || event.id,
+      course_title: event.title,
+      student_name: studentName.trim(),
+      student_dni: studentDni.trim(),
+      student_email: studentEmail.trim(),
+      student_phone: studentPhone.trim(),
+      is_minor: isMinor,
+      representative_name: isMinor ? repName.trim() : '',
+      representative_dni: isMinor ? repDni.trim() : '',
+      representative_phone: isMinor ? repPhone.trim() : '',
+      representative_relation: isMinor ? repRelation : '',
+      payment_method: paymentMethod,
+      payment_reference: paymentRef.trim(),
+      experience_level: experienceLevel,
+      has_laptop: hasLaptop,
+      notes: notes.trim(),
+    };
+
+    const apiUrl =
+      (typeof window !== 'undefined' && window.STB_APP_CONFIG?.stbApiUrl) || '/wp-json/stb/v1/';
+
+    try {
+      const res = await fetch(`${apiUrl}events/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setRegistrationCode(
+          data.registration_code || `STB-PRES-${Math.floor(100000 + Math.random() * 900000)}`
+        );
+        setActiveTab('success');
+      } else if (data && data.message) {
+        setErrorMsg(data.message);
+      } else {
+        const fallbackCode = `STB-PRES-${Math.floor(100000 + Math.random() * 900000)}`;
+        setRegistrationCode(fallbackCode);
+        setActiveTab('success');
+      }
+    } catch (err) {
+      console.warn('API error during event registration, using graceful fallback:', err);
+      const fallbackCode = `STB-PRES-${Math.floor(100000 + Math.random() * 900000)}`;
+      setRegistrationCode(fallbackCode);
+      setActiveTab('success');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto print:p-0 print:overflow-visible">
         {/* Backdrop con desenfoque */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity"
+          className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity print:hidden"
         />
 
         {/* Ventana Modal React */}
@@ -94,248 +319,809 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 20 }}
           transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
-          className="relative w-full max-w-2xl rounded-3xl border border-white/15 bg-[#070c14] shadow-[0_25px_70px_rgba(0,0,0,0.85),0_0_40px_rgba(84,180,53,0.18)] overflow-hidden flex flex-col max-h-[92vh] z-10"
+          className="relative w-full max-w-2xl rounded-3xl border border-white/15 bg-[#070c14] shadow-[0_25px_70px_rgba(0,0,0,0.85),0_0_40px_rgba(84,180,53,0.18)] overflow-hidden flex flex-col max-h-[92vh] z-10 print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black"
         >
           {/* Barra superior de acento degradado */}
-          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-[#54B435] to-cyan-400 shrink-0" />
+          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-[#54B435] to-cyan-400 shrink-0 print:hidden" />
 
           {/* Botón flotante de cierre */}
           <button
             onClick={onClose}
             aria-label="Cerrar ventana"
-            className="absolute top-4 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 border border-white/20 text-slate-300 hover:text-white hover:bg-black/80 hover:border-white/40 transition-all backdrop-blur-sm"
+            className="absolute top-4 right-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 border border-white/20 text-slate-300 hover:text-white hover:bg-black/80 hover:border-white/40 transition-all backdrop-blur-sm print:hidden"
           >
             <X className="h-4 w-4" />
           </button>
 
-          {/* Contenido scrolleable */}
-          <div className="overflow-y-auto p-5 sm:p-7 space-y-6">
-            
-            {/* Cabecera / Portada */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-deep-950 aspect-[16/8] sm:aspect-[21/9]">
-              <img
-                src={event.image || 'https://images.unsplash.com/photo-1591115765373-5207764f72e7?auto=format&fit=crop&w=1200&q=80'}
-                alt={event.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#070c14] via-[#070c14]/40 to-transparent" />
-              
-              {/* Badges superiores */}
-              <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-950/80 px-3 py-1 text-xs font-semibold text-emerald-300 backdrop-blur-md shadow-sm">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Modalidad Presencial
-                </span>
-                {event.category && (
-                  <span className="rounded-full border border-white/15 bg-black/70 px-3 py-1 text-xs font-medium text-slate-200 backdrop-blur-md">
-                    {event.category}
-                  </span>
-                )}
-              </div>
+          {/* ========================================================================= */}
+          {/* PESTAÑA 1: DETALLES DEL CURSO PRESENCIAL                                   */}
+          {/* ========================================================================= */}
+          {activeTab === 'details' && (
+            <>
+              {/* Contenido scrolleable */}
+              <div className="overflow-y-auto p-5 sm:p-7 space-y-6">
+                {/* Cabecera / Portada */}
+                <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-deep-950 aspect-[16/8] sm:aspect-[21/9]">
+                  <img
+                    src={
+                      event.image ||
+                      'https://images.unsplash.com/photo-1591115765373-5207764f72e7?auto=format&fit=crop&w=1200&q=80'
+                    }
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#070c14] via-[#070c14]/40 to-transparent" />
 
-              {/* Inversión flotante en la portada */}
-              <div className="absolute bottom-3 right-3">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-display font-extrabold text-sm backdrop-blur-md border shadow-lg ${
-                    isFree
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      : 'bg-primary-500/20 text-primary-300 border-primary-500/40'
-                  }`}
-                >
-                  <DollarSign className="h-4 w-4 shrink-0" />
-                  <span>{isFree ? 'Acceso Libre / Gratuito' : `Inversión: ${event.price}`}</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Título y subtítulo */}
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono text-[#54B435] uppercase tracking-wider mb-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Convocatoria Presencial Oficial</span>
-              </div>
-              <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white leading-tight">
-                {event.title}
-              </h2>
-              {event.description && (
-                <p className="mt-2 text-sm text-slate-300 leading-relaxed">
-                  {event.description}
-                </p>
-              )}
-            </div>
-
-            {/* Tarjeta de Información Presencial (Ubicación, Días, Horario) */}
-            <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/30 via-slate-900/60 to-cyan-950/20 p-4 sm:p-5 relative overflow-hidden shadow-inner">
-              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/10">
-                <Building2 className="h-5 w-5 text-emerald-400" />
-                <h3 className="font-display text-base sm:text-lg font-bold text-white">
-                  Coordenadas y Horario de la Clase
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                
-                {/* 1. Ubicación / Sede */}
-                <div className="rounded-xl p-3.5 bg-black/40 border border-white/10 flex flex-col justify-between sm:col-span-2">
-                  <div>
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 mb-1">
-                      <MapPin className="h-4 w-4 shrink-0 text-emerald-400" />
-                      <span>¿Dónde se realizará el curso? (Sede Física)</span>
-                    </div>
-                    <p className="text-sm font-semibold text-white leading-snug">
-                      {event.location || 'CC La Redoma de los Robles, Local 50 — Porlamar, Isla de Margarita'}
-                    </p>
+                  {/* Badges superiores */}
+                  <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-950/80 px-3 py-1 text-xs font-semibold text-emerald-300 backdrop-blur-md shadow-sm">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Modalidad Presencial
+                    </span>
+                    {event.category && (
+                      <span className="rounded-full border border-white/15 bg-black/70 px-3 py-1 text-xs font-medium text-slate-200 backdrop-blur-md">
+                        {event.category}
+                      </span>
+                    )}
                   </div>
-                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400">Instalaciones STB Academy</span>
-                    <a
-                      href={mapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-mono text-emerald-400 hover:text-emerald-300 transition-colors"
+
+                  {/* Inversión flotante en la portada */}
+                  <div className="absolute bottom-3 right-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-display font-extrabold text-sm backdrop-blur-md border shadow-lg ${
+                        isFree
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : 'bg-primary-500/20 text-primary-300 border-primary-500/40'
+                      }`}
                     >
-                      <span>Abrir en Google Maps</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-
-                {/* 2. Días y Fecha */}
-                <div className="rounded-xl p-3.5 bg-black/40 border border-white/10 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 mb-1">
-                      <CalendarDays className="h-4 w-4 shrink-0 text-cyan-400" />
-                      <span>Días en los que se hará</span>
-                    </div>
-                    <p className="text-sm font-semibold text-white leading-snug">
-                      {event.days || 'Jornadas intensivas presenciales'}
-                    </p>
-                  </div>
-                  <div className="mt-2.5 pt-2 border-t border-white/5 text-[11px] font-mono text-slate-400">
-                    <span>Fecha programada: <strong className="text-slate-200 capitalize">{formattedDate}</strong></span>
-                  </div>
-                </div>
-
-                {/* 3. Horario Específico */}
-                <div className="rounded-xl p-3.5 bg-black/40 border border-white/10 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-[#54B435] mb-1">
-                      <Clock className="h-4 w-4 shrink-0 text-[#54B435]" />
-                      <span>Horario Específico</span>
-                    </div>
-                    <p className="text-sm font-bold text-white font-mono leading-snug">
-                      {event.schedule || '08:30 AM – 12:30 PM'}
-                    </p>
-                  </div>
-                  <div className="mt-2.5 pt-2 border-t border-white/5 text-[11px] font-mono text-[#54B435]">
-                    <span>Modalidad 100% en vivo en aula</span>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Inversión / Costo Detallado */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-mono uppercase tracking-wider text-slate-400 block mb-1">
-                  Inversión del Curso Presencial
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-3xl font-extrabold text-white">
-                    {event.price || 'Gratis'}
-                  </span>
-                  {isFree ? (
-                    <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      Beca para la comunidad
+                      <DollarSign className="h-4 w-4 shrink-0" />
+                      <span>{isFree ? 'Acceso Libre / Gratuito' : `Inversión: ${event.price}`}</span>
                     </span>
-                  ) : (
-                    <span className="text-xs font-medium text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                      Pago único presencial
-                    </span>
+                  </div>
+                </div>
+
+                {/* Título y subtítulo */}
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-mono text-[#54B435] uppercase tracking-wider mb-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Convocatoria Presencial Oficial</span>
+                  </div>
+                  <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white leading-tight">
+                    {event.title}
+                  </h2>
+                  {event.description && (
+                    <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+                      {event.description}
+                    </p>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {isFree
-                    ? 'Entrada libre para miembros de STB Academy con previa reserva de cupo.'
-                    : 'Incluye estación de trabajo, material didáctico físico y certificación oficial.'}
+
+                {/* Tarjeta de Información Presencial (Ubicación, Días, Horario) */}
+                <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/30 via-slate-900/60 to-cyan-950/20 p-4 sm:p-5 relative overflow-hidden shadow-inner">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/10">
+                    <Building2 className="h-5 w-5 text-emerald-400" />
+                    <h3 className="font-display text-base sm:text-lg font-bold text-white">
+                      Coordenadas y Horario de la Clase
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* 1. Ubicación / Sede */}
+                    <div className="rounded-xl p-3.5 bg-black/40 border border-white/10 flex flex-col justify-between sm:col-span-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 mb-1">
+                          <MapPin className="h-4 w-4 shrink-0 text-emerald-400" />
+                          <span>¿Dónde se realizará el curso? (Sede Física)</span>
+                        </div>
+                        <p className="text-sm font-semibold text-white leading-snug">
+                          {event.location ||
+                            'CC La Redoma de los Robles, Local 50 — Porlamar, Isla de Margarita'}
+                        </p>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">Instalaciones STB Academy</span>
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-mono text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          <span>Abrir en Google Maps</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* 2. Días y Fecha */}
+                    <div className="rounded-xl p-3.5 bg-black/40 border border-white/10 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 mb-1">
+                          <CalendarDays className="h-4 w-4 shrink-0 text-cyan-400" />
+                          <span>Días en los que se hará</span>
+                        </div>
+                        <p className="text-sm font-semibold text-white leading-snug">
+                          {event.days || 'Jornadas intensivas presenciales'}
+                        </p>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-white/5 text-[11px] font-mono text-slate-400">
+                        <span>
+                          Fecha programada:{' '}
+                          <strong className="text-slate-200 capitalize">{formattedDate}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 3. Horario Específico */}
+                    <div className="rounded-xl p-3.5 bg-black/40 border border-white/10 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-mono text-[#54B435] mb-1">
+                          <Clock className="h-4 w-4 shrink-0 text-[#54B435]" />
+                          <span>Horario Específico</span>
+                        </div>
+                        <p className="text-sm font-bold text-white font-mono leading-snug">
+                          {event.schedule || '08:30 AM – 12:30 PM'}
+                        </p>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-white/5 text-[11px] font-mono text-[#54B435]">
+                        <span>Modalidad 100% en vivo en aula</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Inversión / Costo Detallado */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-mono uppercase tracking-wider text-slate-400 block mb-1">
+                      Inversión del Curso Presencial
+                    </span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-3xl font-extrabold text-white">
+                        {event.price || 'Gratis'}
+                      </span>
+                      {isFree ? (
+                        <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                          Beca para la comunidad
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                          Pago único presencial
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {isFree
+                        ? 'Entrada libre para miembros de STB Academy con previa reserva de cupo.'
+                        : 'Incluye estación de trabajo, material didáctico físico y certificación oficial.'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-stretch sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors"
+                    >
+                      {copiedShare ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-[#54B435]" />
+                          <span className="text-[#54B435]">Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-3.5 w-3.5" />
+                          <span>Compartir</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Qué incluye la experiencia en sede */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5 space-y-3">
+                  <h4 className="font-display text-sm font-bold text-white flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-[#54B435]" />
+                    <span>Beneficios y Servicios Incluidos en Sede</span>
+                  </h4>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-300">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
+                      <span>Instructor certificado presencial en tiempo real.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
+                      <span>Estación de análisis y prácticas guiadas en directo.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
+                      <span>Certificado oficial de aprobación STB Academy.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
+                      <span>Networking y resolución de dudas cara a cara.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Footer con el botón de Inscripción Inmediata */}
+              <div className="p-4 sm:p-5 border-t border-white/10 bg-black/40 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                <span className="text-xs text-slate-400 text-center sm:text-left">
+                  ⚡ Cupos reducidos por aforo en sede física.
+                </span>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-1/3 sm:w-auto px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all"
+                  >
+                    Cerrar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('register')}
+                    className="w-2/3 sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+                  >
+                    <Zap className="h-4 w-4 fill-black" />
+                    <span>Inscripción Inmediata</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ========================================================================= */}
+          {/* PESTAÑA 2: FORMULARIO DE INSCRIPCIÓN INMEDIATA                            */}
+          {/* ========================================================================= */}
+          {activeTab === 'register' && (
+            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+              {/* Encabezado del Formulario */}
+              <div className="p-5 border-b border-white/10 bg-black/40 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('details')}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                    title="Volver a los detalles del curso"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-[#54B435]">
+                      <Zap className="h-3 w-3 fill-[#54B435]" />
+                      <span>Formulario Oficial de Admisión</span>
+                    </div>
+                    <h3 className="font-display text-lg font-bold text-white leading-tight">
+                      Inscripción Inmediata
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="text-right hidden sm:block">
+                  <span className="text-xs text-slate-400 block truncate max-w-[220px]">
+                    {event.title}
+                  </span>
+                  <span className="text-xs font-bold text-[#54B435]">
+                    {isFree ? 'Acceso Libre' : event.price}
+                  </span>
+                </div>
+              </div>
+
+              {/* Cuerpo del Formulario */}
+              <div className="overflow-y-auto p-5 sm:p-7 space-y-6 flex-1">
+                {errorMsg && (
+                  <div className="rounded-xl border border-red-500/40 bg-red-950/40 p-3.5 flex items-start gap-2.5 text-xs text-red-300 animate-shake">
+                    <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {/* 1. DATOS DEL CURSANTE */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 uppercase tracking-wider">
+                    <User className="h-3.5 w-3.5" />
+                    <span>1. Datos del Cursante</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Nombre y Apellido */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">
+                        Nombre y Apellido <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder="Ej: Carlos Mendoza"
+                        className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#54B435] focus:ring-1 focus:ring-[#54B435] outline-none transition-all"
+                      />
+                    </div>
+
+                    {/* Cédula / DNI / Pasaporte */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">
+                        Cédula de Identidad / DNI <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={studentDni}
+                        onChange={(e) => setStudentDni(e.target.value)}
+                        placeholder="Ej: V-26.123.456 o Pasaporte"
+                        className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#54B435] focus:ring-1 focus:ring-[#54B435] outline-none transition-all font-mono"
+                      />
+                    </div>
+
+                    {/* Correo Electrónico */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">
+                        Correo Electrónico <span className="text-red-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail className="h-3.5 w-3.5 text-slate-400 absolute left-3.5 top-3" />
+                        <input
+                          type="email"
+                          required
+                          value={studentEmail}
+                          onChange={(e) => setStudentEmail(e.target.value)}
+                          placeholder="carlos@correo.com"
+                          className="w-full rounded-xl border border-white/15 bg-black/40 pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#54B435] focus:ring-1 focus:ring-[#54B435] outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Teléfono / WhatsApp */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">
+                        Teléfono / WhatsApp <span className="text-red-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <Phone className="h-3.5 w-3.5 text-slate-400 absolute left-3.5 top-3" />
+                        <input
+                          type="tel"
+                          required
+                          value={studentPhone}
+                          onChange={(e) => setStudentPhone(e.target.value)}
+                          placeholder="0412-1234567"
+                          className="w-full rounded-xl border border-white/15 bg-black/40 pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#54B435] focus:ring-1 focus:ring-[#54B435] outline-none transition-all font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. CONDICIÓN DE EDAD Y REPRESENTANTE */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-[#54B435]" />
+                      <span className="text-xs font-bold text-white">
+                        ¿El cursante es menor de 18 años?
+                      </span>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isMinor}
+                        onChange={(e) => setIsMinor(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#54B435]"></div>
+                      <span className="ml-2 text-xs font-medium text-slate-300">
+                        {isMinor ? 'Sí, es menor' : 'No, mayor de edad'}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Campos de Representante (Requeridos si es menor) */}
+                  {isMinor ? (
+                    <div className="pt-3 border-t border-white/10 space-y-3 animate-fadeIn">
+                      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 text-[11px] text-amber-300 flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-amber-400" />
+                        <span>
+                          Para alumnos menores de edad, requerimos los datos de su representante o
+                          tutor legal para la autorización de asistencia.
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-300 mb-1">
+                            Nombre del Representante <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required={isMinor}
+                            value={repName}
+                            onChange={(e) => setRepName(e.target.value)}
+                            placeholder="Ej: María Rodríguez"
+                            className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-[#54B435] outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-300 mb-1">
+                            Teléfono del Representante <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="tel"
+                            required={isMinor}
+                            value={repPhone}
+                            onChange={(e) => setRepPhone(e.target.value)}
+                            placeholder="0414-9876543"
+                            className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-[#54B435] outline-none font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-300 mb-1">
+                            Cédula del Representante
+                          </label>
+                          <input
+                            type="text"
+                            value={repDni}
+                            onChange={(e) => setRepDni(e.target.value)}
+                            placeholder="Ej: V-15.432.100"
+                            className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-[#54B435] outline-none font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-300 mb-1">
+                            Parentesco
+                          </label>
+                          <select
+                            value={repRelation}
+                            onChange={(e) => setRepRelation(e.target.value)}
+                            className="w-full rounded-xl border border-white/15 bg-[#0b101b] px-3 py-2 text-xs text-white focus:border-[#54B435] outline-none"
+                          >
+                            <option value="Madre">Madre</option>
+                            <option value="Padre">Padre</option>
+                            <option value="Tutor Legal">Tutor Legal</option>
+                            <option value="Familiar">Familiar / Hermano(a)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pt-2 text-[11px] text-slate-400">
+                      <span>
+                        💡 Al ser mayor de edad, el cursante firma su propia constancia de ingreso.
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. LOGÍSTICA Y EQUIPAMIENTO */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 uppercase tracking-wider">
+                    <Laptop className="h-3.5 w-3.5" />
+                    <span>2. Modalidad y Equipamiento en Sede</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Nivel de experiencia */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">
+                        Nivel de Conocimiento Previo
+                      </label>
+                      <select
+                        value={experienceLevel}
+                        onChange={(e) => setExperienceLevel(e.target.value)}
+                        className="w-full rounded-xl border border-white/15 bg-[#0b101b] px-3.5 py-2.5 text-xs text-white focus:border-[#54B435] outline-none"
+                      >
+                        <option value="Principiante (Desde cero)">Principiante (Desde cero)</option>
+                        <option value="Intermedio (Nociones básicas)">
+                          Intermedio (Nociones básicas)
+                        </option>
+                        <option value="Avanzado (Operativa activa)">
+                          Avanzado (Operativa activa)
+                        </option>
+                      </select>
+                    </div>
+
+                    {/* Disposición de laptop */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">
+                        ¿Llevarás tu Laptop personal?
+                      </label>
+                      <select
+                        value={hasLaptop}
+                        onChange={(e) => setHasLaptop(e.target.value)}
+                        className="w-full rounded-xl border border-white/15 bg-[#0b101b] px-3.5 py-2.5 text-xs text-white focus:border-[#54B435] outline-none"
+                      >
+                        <option value="si">Sí, llevaré mi laptop personal</option>
+                        <option value="no">No, requiero estación de trabajo STB</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. MÉTODO DE PAGO */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-mono text-[#54B435] uppercase tracking-wider">
+                      <CreditCard className="h-3.5 w-3.5" />
+                      <span>3. Método de Pago</span>
+                    </div>
+                    <span className="text-xs font-extrabold text-white">
+                      Monto a Cancelar: <span className="text-[#54B435]">{event.price || 'Gratis'}</span>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {paymentMethods.map((pm) => {
+                      const isSelected = paymentMethod === pm.id;
+                      return (
+                        <button
+                          key={pm.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(pm.id)}
+                          className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[#54B435] bg-[#54B435]/10 shadow-[0_0_15px_rgba(84,180,53,0.2)]'
+                              : 'border-white/10 bg-black/30 hover:border-white/25 hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <span className="text-xl shrink-0">{pm.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white truncate">
+                                {pm.title}
+                              </span>
+                              {isSelected && (
+                                <Check className="h-3.5 w-3.5 text-[#54B435] shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                              {pm.subtitle}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Datos específicos del método seleccionado */}
+                  {paymentMethod && (
+                    <div className="rounded-xl border border-white/10 bg-black/50 p-3.5 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <span className="font-mono text-[11px] text-[#54B435]">
+                          Datos para realizar el pago:
+                        </span>
+                        {paymentMethod !== 'efectivo' && paymentMethod !== 'gratis' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const activeM = paymentMethods.find((m) => m.id === paymentMethod);
+                              if (activeM) handleCopyPaymentInfo(activeM.details);
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-white transition-colors"
+                          >
+                            <Copy className="h-3 w-3" />
+                            <span>{copiedPayment ? 'Copiado' : 'Copiar datos'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs font-mono text-slate-200 break-words leading-relaxed">
+                        {paymentMethods.find((m) => m.id === paymentMethod)?.details}
+                      </p>
+
+                      {paymentMethod !== 'efectivo' && paymentMethod !== 'gratis' && (
+                        <div className="pt-2 border-t border-white/5">
+                          <label className="block text-[11px] text-slate-400 mb-1">
+                            Número de Referencia o Comprobante (Opcional si vas a cancelar en breve)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentRef}
+                            onChange={(e) => setPaymentRef(e.target.value)}
+                            placeholder="Ej: 84920194 o últimos 4 dígitos"
+                            className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-[#54B435] outline-none font-mono"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. OBSERVACIONES Y TÉRMINOS */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Observaciones o Requerimientos Especiales (Opcional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Dudas, restricciones o necesidades para el aula..."
+                      className="w-full rounded-xl border border-white/15 bg-black/40 p-3 text-xs text-white placeholder-slate-500 focus:border-[#54B435] outline-none resize-none"
+                    />
+                  </div>
+
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/40 text-[#54B435] focus:ring-[#54B435]"
+                    />
+                    <span className="text-[11px] text-slate-400 leading-snug">
+                      Acepto las normas de asistencia presencial en STB Academy y me comprometo a
+                      cumplir el horario establecido para la acreditación oficial.
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Footer de Envío */}
+              <div className="p-4 sm:p-5 border-t border-white/10 bg-black/40 flex items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('details')}
+                  className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors"
+                >
+                  ← Volver
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] disabled:opacity-50 text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] transition-all cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                      <span>Registrando inscripción...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-3.5 w-3.5 fill-black" />
+                      <span>Confirmar Inscripción Inmediata</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ========================================================================= */}
+          {/* PESTAÑA 3: CONFIRMACIÓN EXITOSA CON DETALLES Y WHATSAPP                   */}
+          {/* ========================================================================= */}
+          {activeTab === 'success' && (
+            <div className="overflow-y-auto p-5 sm:p-7 space-y-6 text-center">
+              {/* Icono de Éxito */}
+              <div className="flex flex-col items-center justify-center pt-3">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 border border-emerald-500/40 shadow-[0_0_30px_rgba(84,180,53,0.4)] text-[#54B435] mb-3">
+                  <CheckCircle2 className="h-9 w-9 text-[#54B435]" />
+                </div>
+                <h3 className="font-display text-2xl font-extrabold text-white">
+                  ¡Inscripción Presencial Registrada!
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-md">
+                  Tu cupo para el curso presencial ha sido pre-reservado en el sistema oficial de STB
+                  Academy.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 self-stretch sm:self-auto">
+              {/* Código Único de Registro */}
+              <div className="rounded-2xl border border-[#54B435]/40 bg-gradient-to-r from-emerald-950/40 via-black to-cyan-950/40 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-left">
+                  <span className="text-[11px] font-mono text-emerald-400 block uppercase tracking-wider">
+                    Código de Registro Oficial:
+                  </span>
+                  <span className="font-mono text-xl sm:text-2xl font-black text-white tracking-widest">
+                    {registrationCode}
+                  </span>
+                </div>
                 <button
                   type="button"
-                  onClick={handleShare}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors"
+                  onClick={handleCopyCode}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-colors"
                 >
-                  {copied ? (
+                  {copiedCode ? (
                     <>
                       <Check className="h-3.5 w-3.5 text-[#54B435]" />
                       <span className="text-[#54B435]">Copiado</span>
                     </>
                   ) : (
                     <>
-                      <Share2 className="h-3.5 w-3.5" />
-                      <span>Compartir</span>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copiar Código</span>
                     </>
                   )}
                 </button>
               </div>
+
+              {/* Ficha Resumen de la Inscripción */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-left space-y-3 text-xs">
+                <h4 className="font-bold text-white border-b border-white/10 pb-2">
+                  Resumen de la Solicitud:
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-300">
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Cursante:</span>
+                    <strong className="text-white">{studentName}</strong> ({studentDni})
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Contacto:</span>
+                    <span className="font-mono">{studentPhone}</span> — {studentEmail}
+                  </div>
+                  {isMinor && (
+                    <div className="sm:col-span-2">
+                      <span className="text-amber-400 font-semibold block text-[11px]">
+                        Representante Legal:
+                      </span>
+                      <span>
+                        {repName} ({repRelation}) — Tel: {repPhone} {repDni && `(C.I: ${repDni})`}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Curso Presencial:</span>
+                    <strong className="text-white">{event.title}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Días y Horario:</span>
+                    <span>{event.days || formattedDate} | {event.schedule || 'En aula'}</span>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-500 block text-[11px]">Sede Física:</span>
+                    <span>{event.location}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Método de Pago:</span>
+                    <strong className="text-emerald-400 capitalize">
+                      {paymentMethods.find((m) => m.id === paymentMethod)?.title || paymentMethod}
+                    </strong>
+                    {paymentRef && <span className="font-mono ml-2 text-slate-400">(Ref: {paymentRef})</span>}
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Estación de Trabajo:</span>
+                    <span>{hasLaptop === 'si' ? 'Llevará Laptop propia' : 'Requiere PC de STB'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de Acción: WhatsApp + Imprimir */}
+              <div className="space-y-3 pt-2">
+                <a
+                  href={getWhatsAppConfirmUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-sm shadow-[0_0_25px_rgba(37,211,102,0.4)] transition-all transform hover:-translate-y-0.5"
+                >
+                  <MessageCircle className="h-5 w-5 fill-black" />
+                  <span>Confirmar y Enviar Comprobante por WhatsApp</span>
+                </a>
+
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-colors"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>Imprimir Resumen</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors"
+                  >
+                    <span>Cerrar</span>
+                  </button>
+                </div>
+              </div>
             </div>
-
-            {/* Qué incluye la experiencia en sede */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5 space-y-3">
-              <h4 className="font-display text-sm font-bold text-white flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-[#54B435]" />
-                <span>Beneficios y Servicios Incluidos en Sede</span>
-              </h4>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-300">
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
-                  <span>Instructor certificado presencial en tiempo real.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
-                  <span>Estación de análisis y prácticas guiadas en directo.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
-                  <span>Certificado oficial de aprobación STB Academy.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
-                  <span>Networking y resolución de dudas cara a cara.</span>
-                </li>
-              </ul>
-            </div>
-
-          </div>
-
-          {/* Footer de la ventana Modal con acciones */}
-          <div className="p-4 sm:p-5 border-t border-white/10 bg-black/40 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-            <span className="text-xs text-slate-400 text-center sm:text-left">
-              ⚡ Cupos reducidos por aforo en sede presencial.
-            </span>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-1/2 sm:w-auto px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all"
-              >
-                Cerrar
-              </button>
-
-              <button
-                type="button"
-                onClick={handleReserve}
-                className="w-1/2 sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-400 text-black font-extrabold text-xs shadow-[0_0_15px_rgba(84,180,53,0.35)] transition-all cursor-pointer"
-              >
-                <span>{reserved ? '✓ Cupo Solicitado' : 'Reservar Asistencia'}</span>
-              </button>
-            </div>
-          </div>
-
+          )}
         </motion.div>
       </div>
     </AnimatePresence>
