@@ -60,7 +60,7 @@ export function EventDetailModal({
   const [repDni, setRepDni] = useState('');
   const [repPhone, setRepPhone] = useState('');
   const [repRelation, setRepRelation] = useState('Padre/Madre');
-  const [paymentMethod, setPaymentMethod] = useState('pago_movil');
+  const [paymentMethod, setPaymentMethod] = useState('cashea');
   const [paymentRef, setPaymentRef] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('Principiante (Desde cero)');
   const [hasLaptop, setHasLaptop] = useState('si');
@@ -77,8 +77,7 @@ export function EventDetailModal({
     if (event) {
       setActiveTab(initialTab);
       setErrorMsg('');
-      const defaultPayment = event.is_free || event.price === 'Gratis' ? 'gratis' : 'pago_movil';
-      setPaymentMethod(defaultPayment);
+      setPaymentMethod('cashea');
     }
   }, [event, initialTab]);
 
@@ -122,8 +121,15 @@ export function EventDetailModal({
     event.location
   )}`;
 
-  // Métodos de pago disponibles
+  // Métodos de pago disponibles (Cashea como opción principal)
   const paymentMethods = [
+    {
+      id: 'cashea',
+      title: 'Cashea',
+      subtitle: 'Paga en cuotas sin interés',
+      icon: '🟡',
+      details: 'Paga una inicial en sede o escaneando nuestro código QR oficial de Cashea y divide el resto en 3 cuotas cada 14 días sin interés. También puedes solicitar tu enlace de pago directo por WhatsApp.',
+    },
     {
       id: 'pago_movil',
       title: 'Pago Móvil',
@@ -160,17 +166,6 @@ export function EventDetailModal({
       details: 'Binance Pay ID: 71298412 | Usuario: STB_Academy_Oficial',
     },
   ];
-
-  // Si el curso es gratuito, agregar opción de beca como principal
-  if (isFree && !paymentMethods.some((m) => m.id === 'gratis')) {
-    paymentMethods.unshift({
-      id: 'gratis',
-      title: 'Beca de Acceso Libre',
-      subtitle: '100% Bonificado ($0)',
-      icon: '🎁',
-      details: 'Este curso presencial no tiene costo. Tu cupo queda asignado de forma gratuita.',
-    });
-  }
 
   const handleShare = () => {
     if (navigator.clipboard) {
@@ -876,7 +871,13 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                               : 'border-white/10 bg-black/30 hover:border-white/25 hover:bg-white/[0.04]'
                           }`}
                         >
-                          <span className="text-xl shrink-0">{pm.icon}</span>
+                          {pm.id === 'cashea' ? (
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFE600] text-black font-black text-xs shrink-0 shadow-[0_0_12px_rgba(255,230,0,0.4)]">
+                              c.
+                            </div>
+                          ) : (
+                            <span className="text-xl shrink-0">{pm.icon}</span>
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold text-white truncate">
@@ -923,13 +924,19 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                       {paymentMethod !== 'efectivo' && paymentMethod !== 'gratis' && (
                         <div className="pt-2 border-t border-white/5">
                           <label className="block text-[11px] text-slate-400 mb-1">
-                            Número de Referencia o Comprobante (Opcional si vas a cancelar en breve)
+                            {paymentMethod === 'cashea'
+                              ? 'Teléfono registrado en Cashea o Número de Operación (Opcional)'
+                              : 'Número de Referencia o Comprobante (Opcional si vas a cancelar en breve)'}
                           </label>
                           <input
                             type="text"
                             value={paymentRef}
                             onChange={(e) => setPaymentRef(e.target.value)}
-                            placeholder="Ej: 84920194 o últimos 4 dígitos"
+                            placeholder={
+                              paymentMethod === 'cashea'
+                                ? 'Ej: 0412-1234567 o Código Cashea'
+                                : 'Ej: 84920194 o últimos 4 dígitos'
+                            }
                             className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-[#54B435] outline-none font-mono"
                           />
                         </div>
