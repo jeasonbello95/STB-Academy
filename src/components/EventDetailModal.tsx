@@ -580,9 +580,9 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
           {/* ========================================================================= */}
           {activeTab === 'register' && (
             <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-              {/* Encabezado del Formulario (con pr-14 para no colisionar con el botón X y fondo opaco) */}
-              <div className="p-4 sm:p-5 pr-14 border-b border-white/10 bg-[#070c14] flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-md">
-                <div className="flex items-center gap-3 min-w-0">
+              {/* Encabezado del Formulario (con pr-16 para garantizar espacio libre para el botón X) */}
+              <div className="p-4 sm:p-5 pr-16 border-b border-white/10 bg-[#070c14] flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-md">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <button
                     type="button"
                     onClick={() => setActiveTab('details')}
@@ -591,24 +591,21 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </button>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-[#54B435]">
-                      <Zap className="h-3 w-3 fill-[#54B435] shrink-0" />
-                      <span className="truncate">Formulario Oficial de Admisión</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-xs font-mono mb-0.5">
+                      <span className="inline-flex items-center gap-1 text-[#54B435] font-semibold">
+                        <Zap className="h-3 w-3 fill-[#54B435] shrink-0" />
+                        <span>Inscripción Inmediata</span>
+                      </span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-emerald-400 font-bold">
+                        {isFree ? 'Acceso Libre' : event.price}
+                      </span>
                     </div>
-                    <h3 className="font-display text-base sm:text-lg font-bold text-white leading-tight truncate">
-                      Inscripción Inmediata
+                    <h3 className="font-display text-base sm:text-lg font-extrabold text-white leading-tight truncate" title={event.title}>
+                      {event.title}
                     </h3>
                   </div>
-                </div>
-
-                <div className="text-right hidden sm:block shrink-0 pl-3">
-                  <span className="text-xs text-slate-400 block truncate max-w-[180px]">
-                    {event.title}
-                  </span>
-                  <span className="text-xs font-bold text-[#54B435]">
-                    {isFree ? 'Acceso Libre' : event.price}
-                  </span>
                 </div>
               </div>
 
