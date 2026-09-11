@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, ArrowRight, Sparkles, Clock, Zap } from 'lucide-react';
+import { CalendarDays, MapPin, ArrowRight, Sparkles, Clock, Zap, CreditCard } from 'lucide-react';
 import type { CourseEvent } from '@/types';
 
 interface EventCardProps {
@@ -65,7 +65,7 @@ export function EventCard({ event, onSelect }: EventCardProps) {
       {/* Información del evento */}
       <div className="flex flex-1 flex-col justify-between">
         <div>
-          {/* Header con Fecha, Días y Horario */}
+          {/* Header con Fecha, Días, Horario y Badges */}
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div className="flex flex-wrap items-center gap-2">
               <time
@@ -78,6 +78,12 @@ export function EventCard({ event, onSelect }: EventCardProps) {
               {event.days && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-medium text-ink-300 border border-white/5">
                   {event.days}
+                </span>
+              )}
+              {event.has_subscription && event.subscription_details && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                  <CreditCard className="h-3 w-3 text-emerald-400" />
+                  {event.subscription_details.cuotas_text || event.subscription_details.summary}
                 </span>
               )}
             </div>
@@ -114,9 +120,16 @@ export function EventCard({ event, onSelect }: EventCardProps) {
             <span className="text-[10px] uppercase text-ink-500 block font-semibold">
               Inversión Presencial
             </span>
-            <span className="font-display text-base sm:text-lg font-extrabold text-white">
-              {event.price || 'Gratis'}
-            </span>
+            <div className="flex flex-col">
+              <span className="font-display text-base sm:text-lg font-extrabold text-white leading-tight">
+                {event.price || 'Gratis'}
+              </span>
+              {event.has_subscription && event.subscription_details && (
+                <span className="text-[11px] font-medium text-emerald-400 font-mono mt-0.5 flex items-center gap-1">
+                  <span>o {event.subscription_details.summary}</span>
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">

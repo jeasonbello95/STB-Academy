@@ -32,6 +32,8 @@ export async function fetchEvents(): Promise<CourseEvent[]> {
           level: item.level || 'Todos los niveles',
           category: item.category || 'Trading Presencial',
           instructor_name: item.instructor_name || 'STB Academy Master',
+          has_subscription: Boolean(item.has_subscription),
+          subscription_details: item.subscription_details || null,
         }));
       }
     }
@@ -75,6 +77,8 @@ export async function fetchEvents(): Promise<CourseEvent[]> {
             level: item.level || 'Todos los niveles',
             category: item.category || 'Trading Presencial',
             instructor_name: item.instructor_name || 'STB Academy Master',
+            has_subscription: Boolean(item.has_subscription),
+            subscription_details: item.subscription_details || null,
           }));
         }
       }
