@@ -27,6 +27,7 @@ import {
   AlertCircle,
   Zap,
   Users,
+  ShoppingCart,
 } from 'lucide-react';
 import type { CourseEvent } from '@/types';
 
@@ -49,6 +50,9 @@ export function EventDetailModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [registrationCode, setRegistrationCode] = useState('');
+  const [wcOrderId, setWcOrderId] = useState<number | null>(null);
+  const [checkoutPaymentUrl, setCheckoutPaymentUrl] = useState<string>('');
+  const [userCreated, setUserCreated] = useState<boolean>(false);
 
   // Campos del formulario de inscripción inmediata
   const [studentName, setStudentName] = useState('');
@@ -78,6 +82,9 @@ export function EventDetailModal({
       setActiveTab(initialTab);
       setErrorMsg('');
       setPaymentMethod(event.has_subscription ? 'suscripcion' : 'cashea');
+      setWcOrderId(null);
+      setCheckoutPaymentUrl('');
+      setUserCreated(false);
     }
   }, [event, initialTab]);
 
@@ -321,6 +328,9 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
         setRegistrationCode(
           data.registration_code || `STB-PRES-${Math.floor(100000 + Math.random() * 900000)}`
         );
+        if (data.wc_order_id) setWcOrderId(data.wc_order_id);
+        if (data.checkout_payment_url) setCheckoutPaymentUrl(data.checkout_payment_url);
+        if (data.user_created) setUserCreated(true);
         setActiveTab('success');
       } else if (data && data.message) {
         setErrorMsg(data.message);
@@ -675,19 +685,29 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   ⚡ Cupos reducidos por aforo en sede física.
                 </span>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-1/3 sm:w-auto px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all cursor-pointer"
+                    className="px-3.5 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all cursor-pointer"
                   >
                     Cerrar
                   </button>
 
+                  {!isFree && (
+                    <a
+                      href={event.checkout_url || `/checkout/?stb_buy_course=${event.course_id || event.id}`}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-cyan-500/30 bg-cyan-950/40 hover:bg-cyan-900/50 hover:border-cyan-400 text-cyan-200 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <ShoppingCart className="h-3.5 w-3.5 text-cyan-400" />
+                      <span>Checkout en Línea</span>
+                    </a>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setActiveTab('register')}
-                    className="w-2/3 sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
                   >
                     <Zap className="h-4 w-4 fill-black" />
                     <span>Inscripción Inmediata</span>
@@ -981,6 +1001,23 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                     </span>
                   </div>
 
+                  {!isFree && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl border border-cyan-500/25 bg-gradient-to-r from-cyan-950/40 via-black to-slate-950/40 text-xs text-slate-300">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-cyan-400 shrink-0" />
+                        <span className="text-[11px] sm:text-xs">
+                          ¿Prefieres pagar con tarjeta internacional o pasarela electrónica?
+                        </span>
+                      </div>
+                      <a
+                        href={event.checkout_url || `/checkout/?stb_buy_course=${event.course_id || event.id}`}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors whitespace-nowrap ml-6 sm:ml-0"
+                      >
+                        <span>Ir al Checkout de WooCommerce ↗</span>
+                      </a>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {paymentMethods.map((pm) => {
                       const isSelected = paymentMethod === pm.id;
@@ -1172,33 +1209,50 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                 </p>
               </div>
 
-              {/* Código Único de Registro */}
-              <div className="rounded-2xl border border-[#54B435]/40 bg-gradient-to-r from-emerald-950/40 via-black to-cyan-950/40 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="text-left">
-                  <span className="text-[11px] font-mono text-emerald-400 block uppercase tracking-wider">
-                    Código de Registro Oficial:
-                  </span>
-                  <span className="font-mono text-xl sm:text-2xl font-black text-white tracking-widest">
-                    {registrationCode}
-                  </span>
+              {/* Código Único de Registro y Badges de Integración */}
+              <div className="space-y-2">
+                <div className="rounded-2xl border border-[#54B435]/40 bg-gradient-to-r from-emerald-950/40 via-black to-cyan-950/40 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-left">
+                    <span className="text-[11px] font-mono text-emerald-400 block uppercase tracking-wider">
+                      Código de Registro Oficial:
+                    </span>
+                    <span className="font-mono text-xl sm:text-2xl font-black text-white tracking-widest">
+                      {registrationCode}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
+                  >
+                    {copiedCode ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-[#54B435]" />
+                        <span className="text-[#54B435]">Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Copiar Código</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCopyCode}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
-                >
-                  {copiedCode ? (
-                    <>
-                      <Check className="h-3.5 w-3.5 text-[#54B435]" />
-                      <span className="text-[#54B435]">Copiado</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      <span>Copiar Código</span>
-                    </>
-                  )}
-                </button>
+
+                {(wcOrderId || userCreated) && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    {wcOrderId && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono text-cyan-300">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-cyan-400" />
+                        <span>Orden WooCommerce #{wcOrderId}</span>
+                      </div>
+                    )}
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono text-emerald-300">
+                      <ShieldCheck className="h-3.5 w-3.5 text-[#54B435]" />
+                      <span>Inscripción Tutor LMS Vinculada</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Ficha Resumen de la Inscripción */}
@@ -1256,8 +1310,20 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                 </div>
               </div>
 
-              {/* Botones de Acción: WhatsApp + Imprimir */}
+              {/* Botones de Acción: WhatsApp + Pagar en Línea WooCommerce + Imprimir */}
               <div className="space-y-3 pt-2">
+                {checkoutPaymentUrl && (
+                  <a
+                    href={checkoutPaymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 px-5 rounded-2xl border border-cyan-500/50 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 font-bold text-xs shadow-[0_0_20px_rgba(6,182,212,0.25)] transition-all cursor-pointer"
+                  >
+                    <CreditCard className="h-4 w-4 text-cyan-400" />
+                    <span>Pagar Pedido #{wcOrderId || ''} en Línea (WooCommerce) ↗</span>
+                  </a>
+                )}
+
                 <a
                   href={getWhatsAppConfirmUrl()}
                   target="_blank"

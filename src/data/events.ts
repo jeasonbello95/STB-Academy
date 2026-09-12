@@ -34,6 +34,8 @@ export async function fetchEvents(): Promise<CourseEvent[]> {
           instructor_name: item.instructor_name || 'STB Academy Master',
           has_subscription: Boolean(item.has_subscription),
           subscription_details: item.subscription_details || null,
+          wc_product_id: item.wc_product_id || 0,
+          checkout_url: item.checkout_url || '',
         }));
       }
     }
@@ -79,6 +81,8 @@ export async function fetchEvents(): Promise<CourseEvent[]> {
             instructor_name: item.instructor_name || 'STB Academy Master',
             has_subscription: Boolean(item.has_subscription),
             subscription_details: item.subscription_details || null,
+            wc_product_id: item.wc_product_id || 0,
+            checkout_url: item.checkout_url || '',
           }));
         }
       }

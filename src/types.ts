@@ -37,5 +37,7 @@ export interface CourseEvent {
   instructor_name?: string;
   has_subscription?: boolean;
   subscription_details?: CourseSubscriptionDetails | null;
+  wc_product_id?: number;
+  checkout_url?: string;
 }
 
