@@ -1,5 +1,6 @@
 import { CalendarDays, MapPin, ArrowRight, Sparkles, Clock, Zap, CreditCard } from 'lucide-react';
 import type { CourseEvent } from '@/types';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 interface EventCardProps {
   event: CourseEvent;
@@ -8,6 +9,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onSelect }: EventCardProps) {
+  const isAdmin = useIsAdmin();
   const dateObj = new Date(`${event.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? event.date
@@ -133,23 +135,37 @@ export function EventCard({ event, onSelect }: EventCardProps) {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={handleDetailsClick}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs px-3 py-2 transition-all"
-            >
-              <span>Detalles</span>
-            </button>
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDetailsClick}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs px-3 py-2 transition-all cursor-pointer"
+                >
+                  <span>Detalles</span>
+                </button>
 
-            <button
-              type="button"
-              onClick={handleRegisterClick}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs px-4 py-2 shadow-[0_0_15px_rgba(84,180,53,0.35)] transition-all group/btn"
-            >
-              <Zap className="h-3.5 w-3.5 fill-black" />
-              <span>Inscripción Inmediata</span>
-              <ArrowRight className="h-3 w-3 transition-transform group-hover/btn:translate-x-0.5" />
-            </button>
+                <button
+                  type="button"
+                  onClick={handleRegisterClick}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs px-4 py-2 shadow-[0_0_15px_rgba(84,180,53,0.35)] transition-all group/btn cursor-pointer"
+                  title="Inscripción manual exclusiva para administradores"
+                >
+                  <Zap className="h-3.5 w-3.5 fill-black" />
+                  <span>Inscripción Inmediata</span>
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover/btn:translate-x-0.5" />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDetailsClick}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs px-4 py-2 shadow-[0_0_15px_rgba(84,180,53,0.35)] transition-all group/btn cursor-pointer"
+              >
+                <span>Ver Detalles</span>
+                <ArrowRight className="h-3 w-3 transition-transform group-hover/btn:translate-x-0.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -28,8 +28,11 @@ import {
   Zap,
   Users,
   ShoppingCart,
+  UserCheck,
+  Key,
 } from 'lucide-react';
 import type { CourseEvent } from '@/types';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 interface EventDetailModalProps {
   event: CourseEvent | null;
@@ -42,17 +45,22 @@ export function EventDetailModal({
   initialTab = 'details',
   onClose,
 }: EventDetailModalProps) {
+  const isAdmin = useIsAdmin();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'register' | 'success'>(initialTab);
   const [copiedShare, setCopiedShare] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedPayment, setCopiedPayment] = useState(false);
+  const [copiedCreds, setCopiedCreds] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [registrationCode, setRegistrationCode] = useState('');
   const [wcOrderId, setWcOrderId] = useState<number | null>(null);
   const [checkoutPaymentUrl, setCheckoutPaymentUrl] = useState<string>('');
   const [userCreated, setUserCreated] = useState<boolean>(false);
+  const [createdUsername, setCreatedUsername] = useState<string>('');
+  const [createdPassword, setCreatedPassword] = useState<string>('');
+  const [isEnrolledTutor, setIsEnrolledTutor] = useState<boolean>(false);
 
   // Campos del formulario de inscripción inmediata
   const [studentName, setStudentName] = useState('');
@@ -79,14 +87,22 @@ export function EventDetailModal({
   // Inicializar o resetear cuando cambia el evento o la pestaña inicial
   useEffect(() => {
     if (event) {
-      setActiveTab(initialTab);
+      if (initialTab === 'register' && !isAdmin) {
+        setActiveTab('details');
+      } else {
+        setActiveTab(initialTab);
+      }
       setErrorMsg('');
       setPaymentMethod(event.has_subscription ? 'suscripcion' : 'cashea');
       setWcOrderId(null);
       setCheckoutPaymentUrl('');
       setUserCreated(false);
+      setCreatedUsername('');
+      setCreatedPassword('');
+      setIsEnrolledTutor(false);
+      setCopiedCreds(false);
     }
-  }, [event, initialTab]);
+  }, [event, initialTab, isAdmin]);
 
   // Cerrar con tecla Escape y bloquear scroll del body
   useEffect(() => {
@@ -230,6 +246,14 @@ export function EventDetailModal({
     }
   };
 
+  const handleCopyCredentials = (text: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedCreds(true);
+      setTimeout(() => setCopiedCreds(false), 2000);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -252,6 +276,9 @@ export function EventDetailModal({
       : '';
     const laptopLine =
       hasLaptop === 'si' ? 'Llevaré mi laptop propia' : 'Requiero equipo de la academia';
+    const userLine = userCreated
+      ? `\n• *Cuenta de Plataforma:* Usuario creado (${createdUsername || studentEmail}) y enrolado en Tutor LMS.`
+      : `\n• *Cuenta de Plataforma:* Usuario existente vinculado y enrolado en Tutor LMS.`;
 
     const text = `¡Hola STB Academy! 🚀 Acabo de registrar mi *Inscripción Inmediata* para el curso presencial:
 • *Curso:* ${event.title}
@@ -262,7 +289,7 @@ export function EventDetailModal({
 • *Sede:* ${event.location}
 • *Días y Horario:* ${event.days || formattedDate} | ${event.schedule || 'En aula'}
 • *Método de Pago:* ${methodTitle}${subLine}${refLine}
-• *Equipamiento:* ${laptopLine}
+• *Equipamiento:* ${laptopLine}${userLine}
 
 Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
 
@@ -310,8 +337,17 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
       notes: notes.trim(),
     };
 
+    if (!isAdmin) {
+      setErrorMsg(
+        'Acceso denegado: El procedimiento de inscripción inmediata a eventos presenciales está reservado exclusivamente para administradores.'
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     const apiUrl =
       (typeof window !== 'undefined' && window.STB_APP_CONFIG?.stbApiUrl) || '/wp-json/stb/v1/';
+    const nonce = (typeof window !== 'undefined' && (window as any).STB_APP_CONFIG?.nonce) || '';
 
     try {
       const res = await fetch(`${apiUrl}events/register`, {
@@ -319,31 +355,37 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          'X-WP-Nonce': nonce,
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
         setRegistrationCode(
           data.registration_code || `STB-PRES-${Math.floor(100000 + Math.random() * 900000)}`
         );
         if (data.wc_order_id) setWcOrderId(data.wc_order_id);
         if (data.checkout_payment_url) setCheckoutPaymentUrl(data.checkout_payment_url);
         if (data.user_created) setUserCreated(true);
+        if (data.username) setCreatedUsername(data.username);
+        if (data.temp_password) setCreatedPassword(data.temp_password);
+        if (data.is_enrolled_tutor) setIsEnrolledTutor(true);
         setActiveTab('success');
+      } else if (res.status === 403 || data?.code === 'rest_forbidden') {
+        setErrorMsg(
+          data?.message ||
+            'Acceso denegado: El procedimiento de inscripción inmediata está reservado exclusivamente para administradores.'
+        );
       } else if (data && data.message) {
         setErrorMsg(data.message);
       } else {
-        const fallbackCode = `STB-PRES-${Math.floor(100000 + Math.random() * 900000)}`;
-        setRegistrationCode(fallbackCode);
-        setActiveTab('success');
+        setErrorMsg('Ocurrió un error al procesar la inscripción. Por favor inténtalo de nuevo.');
       }
     } catch (err) {
-      console.warn('API error during event registration, using graceful fallback:', err);
-      const fallbackCode = `STB-PRES-${Math.floor(100000 + Math.random() * 900000)}`;
-      setRegistrationCode(fallbackCode);
-      setActiveTab('success');
+      console.error('Error durante la inscripción del evento:', err);
+      setErrorMsg('No se pudo conectar con el servidor para registrar la inscripción.');
     } finally {
       setIsSubmitting(false);
     }
@@ -679,7 +721,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                 </div>
               </div>
 
-              {/* Footer con el botón de Inscripción Inmediata */}
+              {/* Footer con las acciones del evento */}
               <div className="p-4 sm:p-5 border-t border-white/10 bg-black/40 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
                 <span className="text-xs text-slate-400 text-center sm:text-left">
                   ⚡ Cupos reducidos por aforo en sede física.
@@ -697,59 +739,67 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   {!isFree && (
                     <a
                       href={event.checkout_url || `/checkout/?stb_buy_course=${event.course_id || event.id}`}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-cyan-500/30 bg-cyan-950/40 hover:bg-cyan-900/50 hover:border-cyan-400 text-cyan-200 text-xs font-bold transition-all cursor-pointer"
+                      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isAdmin
+                          ? 'border border-cyan-500/30 bg-cyan-950/40 hover:bg-cyan-900/50 hover:border-cyan-400 text-cyan-200'
+                          : 'bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transform hover:-translate-y-0.5'
+                      }`}
                     >
-                      <ShoppingCart className="h-3.5 w-3.5 text-cyan-400" />
-                      <span>Checkout en Línea</span>
+                      <ShoppingCart className={`h-3.5 w-3.5 ${isAdmin ? 'text-cyan-400' : 'text-black'}`} />
+                      <span>{isAdmin ? 'Checkout en Línea' : 'Inscribirme en Línea'}</span>
                     </a>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('register')}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
-                  >
-                    <Zap className="h-4 w-4 fill-black" />
-                    <span>Inscripción Inmediata</span>
-                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('register')}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+                      title="Procedimiento administrativo: Registrar estudiante presencial inmediatamente"
+                    >
+                      <Zap className="h-4 w-4 fill-black" />
+                      <span>Inscripción Inmediata (Admin)</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </>
           )}
 
           {/* ========================================================================= */}
-          {/* PESTAÑA 2: FORMULARIO DE INSCRIPCIÓN INMEDIATA                            */}
+          {/* PESTAÑA 2: FORMULARIO DE INSCRIPCIÓN INMEDIATA (EXCLUSIVO ADMINISTRADORES) */}
           {/* ========================================================================= */}
           {activeTab === 'register' && (
-            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-              {/* Encabezado del Formulario (con pr-16 para garantizar espacio libre para el botón X) */}
-              <div className="p-4 sm:p-5 pr-16 border-b border-white/10 bg-[#070c14] flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-md">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('details')}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                    title="Volver a los detalles del curso"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 text-xs font-mono mb-0.5">
-                      <span className="inline-flex items-center gap-1 text-[#54B435] font-semibold">
-                        <Zap className="h-3 w-3 fill-[#54B435] shrink-0" />
-                        <span>Inscripción Inmediata</span>
-                      </span>
-                      <span className="text-slate-600">•</span>
-                      <span className="text-emerald-400 font-bold">
-                        {isFree ? 'Acceso Libre' : event.price}
-                      </span>
+            isAdmin ? (
+              <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+                {/* Encabezado del Formulario (con pr-16 para garantizar espacio libre para el botón X) */}
+                <div className="p-4 sm:p-5 pr-16 border-b border-white/10 bg-[#070c14] flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-md">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('details')}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                      title="Volver a los detalles del curso"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 text-xs font-mono mb-0.5">
+                        <span className="inline-flex items-center gap-1 text-[#54B435] font-semibold">
+                          <Zap className="h-3 w-3 fill-[#54B435] shrink-0" />
+                          <span>Inscripción Inmediata (Admin)</span>
+                        </span>
+                        <span className="text-slate-600">•</span>
+                        <span className="text-emerald-400 font-bold">
+                          {isFree ? 'Acceso Libre' : event.price}
+                        </span>
+                      </div>
+                      <h3 className="font-display text-base sm:text-lg font-extrabold text-white leading-tight truncate" title={event.title}>
+                        {event.title}
+                      </h3>
                     </div>
-                    <h3 className="font-display text-base sm:text-lg font-extrabold text-white leading-tight truncate" title={event.title}>
-                      {event.title}
-                    </h3>
                   </div>
                 </div>
-              </div>
 
               {/* Cuerpo del Formulario */}
               <div className="overflow-y-auto p-5 sm:p-7 space-y-6 flex-1">
@@ -1188,7 +1238,35 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                 </button>
               </div>
             </form>
-          )}
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-4 my-auto flex-1">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                <ShieldCheck className="h-8 w-8" />
+              </div>
+              <h3 className="font-display text-xl font-bold text-white">Acceso Administrativo Requerido</h3>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md leading-relaxed">
+                El procedimiento de inscripción inmediata en sede física está reservado exclusivamente para el personal administrativo de STB Academy. Para inscribirte en este curso presencial, por favor utiliza la opción de inscripción en línea.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('details')}
+                  className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold text-xs transition-all cursor-pointer"
+                >
+                  Ver Detalles
+                </button>
+                {!isFree && (
+                  <a
+                    href={event.checkout_url || `/checkout/?stb_buy_course=${event.course_id || event.id}`}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] transition-all cursor-pointer"
+                  >
+                    <ShoppingCart className="h-4 w-4 text-black" />
+                    <span>Inscribirme en Línea</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
 
           {/* ========================================================================= */}
           {/* PESTAÑA 3: CONFIRMACIÓN EXITOSA CON DETALLES Y WHATSAPP                   */}
@@ -1239,7 +1317,7 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   </button>
                 </div>
 
-                {(wcOrderId || userCreated) && (
+                {(wcOrderId || userCreated || isEnrolledTutor) && (
                   <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                     {wcOrderId && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono text-cyan-300">
@@ -1249,7 +1327,64 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                     )}
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono text-emerald-300">
                       <ShieldCheck className="h-3.5 w-3.5 text-[#54B435]" />
-                      <span>Inscripción Tutor LMS Vinculada</span>
+                      <span>Inscrito en Tutor LMS ✓</span>
+                    </div>
+                    {userCreated ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-xs font-mono text-blue-300">
+                        <UserCheck className="h-3.5 w-3.5 text-blue-400" />
+                        <span>Usuario WordPress Creado</span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/30 text-xs font-mono text-slate-300">
+                        <UserCheck className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Usuario WordPress Vinculado</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Cuadro de Credenciales de Acceso para el Estudiante (si fue creado) */}
+                {userCreated && createdPassword && (
+                  <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-4 text-left space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                        <Key className="h-4 w-4 text-[#54B435]" />
+                        <span>Credenciales de Acceso a la Plataforma Online</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopyCredentials(
+                            `¡Hola ${studentName}! Tus datos de acceso a STB Academy:\nUsuario: ${createdUsername || studentEmail}\nContraseña: ${createdPassword}\nCurso: ${event.title}\nAcceso: ${window.location.origin}/iniciar-sesion`
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-white/15 bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-colors cursor-pointer shrink-0"
+                      >
+                        {copiedCreds ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-[#54B435]" />
+                            <span className="text-[#54B435]">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>Copiar Credenciales</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Se ha creado la cuenta de estudiante y se ha enviado un correo con las credenciales y el acceso directo al curso.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono text-xs">
+                      <div className="bg-black/50 border border-white/10 rounded-xl p-2.5">
+                        <span className="text-slate-500 block text-[10px]">Usuario / Login:</span>
+                        <span className="text-white font-bold">{createdUsername || studentEmail}</span>
+                      </div>
+                      <div className="bg-black/50 border border-white/10 rounded-xl p-2.5">
+                        <span className="text-slate-500 block text-[10px]">Contraseña Temporal:</span>
+                        <span className="text-emerald-400 font-bold">{createdPassword}</span>
+                      </div>
                     </div>
                   </div>
                 )}
