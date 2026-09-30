@@ -1,6 +1,16 @@
 export type { Course } from '@/data/content';
 export type CourseCategory = 'Programación' | 'Robótica' | 'IA' | 'Diseño' | 'Electrónica' | 'Hardware';
 
+export interface InstallmentScheduleItem {
+  installment_number: number;
+  label: string;
+  due_date: string;
+  due_date_formatted: string;
+  amount: string;
+  amount_raw?: number;
+  timing_label?: string;
+}
+
 export interface CourseSubscriptionDetails {
   has_subscription: boolean;
   plan_name?: string;
@@ -14,6 +24,9 @@ export interface CourseSubscriptionDetails {
   summary: string; // e.g. '3 cuotas de $35,00 / mes'
   cuotas_text: string; // e.g. '3 cuotas mensuales de $35,00'
   total_subscription_price?: string | null;
+  schedule?: InstallmentScheduleItem[];
+  monthly_product_id?: number;
+  checkout_url?: string;
 }
 
 export interface CourseEvent {
@@ -37,6 +50,8 @@ export interface CourseEvent {
   instructor_name?: string;
   has_subscription?: boolean;
   subscription_details?: CourseSubscriptionDetails | null;
+  subscription_checkout_url?: string;
+  subscription_product_id?: number;
   wc_product_id?: number;
   checkout_url?: string;
 }

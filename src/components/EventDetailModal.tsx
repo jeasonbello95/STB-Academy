@@ -62,7 +62,13 @@ export function EventDetailModal({
   const [createdPassword, setCreatedPassword] = useState<string>('');
   const [isEnrolledTutor, setIsEnrolledTutor] = useState<boolean>(false);
 
-  // Campos del formulario de inscripción inmediata
+  // Campos del formulario de inscripción inmediata y modalidad de pago
+  const [selectedPlanType, setSelectedPlanType] = useState<'cuotas' | 'one_time'>(
+    event?.has_subscription ? 'cuotas' : 'one_time'
+  );
+  const [firstInstallmentPaid, setFirstInstallmentPaid] = useState<boolean>(false);
+  const [nextInstallmentDate, setNextInstallmentDate] = useState<string>('');
+
   const [studentName, setStudentName] = useState('');
   const [studentDni, setStudentDni] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
@@ -87,12 +93,11 @@ export function EventDetailModal({
   // Inicializar o resetear cuando cambia el evento o la pestaña inicial
   useEffect(() => {
     if (event) {
-      if (initialTab === 'register' && !isAdmin) {
-        setActiveTab('details');
-      } else {
-        setActiveTab(initialTab);
-      }
+      setActiveTab(initialTab);
       setErrorMsg('');
+      setSelectedPlanType(event.has_subscription ? 'cuotas' : 'one_time');
+      setFirstInstallmentPaid(false);
+      setNextInstallmentDate('');
       setPaymentMethod(event.has_subscription ? 'suscripcion' : 'cashea');
       setWcOrderId(null);
       setCheckoutPaymentUrl('');
@@ -102,7 +107,7 @@ export function EventDetailModal({
       setIsEnrolledTutor(false);
       setCopiedCreds(false);
     }
-  }, [event, initialTab, isAdmin]);
+  }, [event, initialTab]);
 
   // Cerrar con tecla Escape y bloquear scroll del body
   useEffect(() => {
@@ -335,15 +340,11 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
       experience_level: experienceLevel,
       has_laptop: hasLaptop,
       notes: notes.trim(),
+      plan_type: selectedPlanType,
+      first_installment_paid: firstInstallmentPaid,
+      installments_count: event.subscription_details?.installments || 3,
+      installment_amount: event.subscription_details?.price_raw || 0,
     };
-
-    if (!isAdmin) {
-      setErrorMsg(
-        'Acceso denegado: El procedimiento de inscripción inmediata a eventos presenciales está reservado exclusivamente para administradores.'
-      );
-      setIsSubmitting(false);
-      return;
-    }
 
     const apiUrl =
       (typeof window !== 'undefined' && window.STB_APP_CONFIG?.stbApiUrl) || '/wp-json/stb/v1/';
@@ -372,11 +373,12 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
         if (data.username) setCreatedUsername(data.username);
         if (data.temp_password) setCreatedPassword(data.temp_password);
         if (data.is_enrolled_tutor) setIsEnrolledTutor(true);
+        if (data.next_installment_date) setNextInstallmentDate(data.next_installment_date);
         setActiveTab('success');
       } else if (res.status === 403 || data?.code === 'rest_forbidden') {
         setErrorMsg(
           data?.message ||
-            'Acceso denegado: El procedimiento de inscripción inmediata está reservado exclusivamente para administradores.'
+            'Acceso denegado: El procedimiento de inscripción no pudo completarse. Consulta con administración.'
         );
       } else if (data && data.message) {
         setErrorMsg(data.message);
@@ -608,89 +610,307 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   </div>
                 </div>
 
-                {/* Cuotas de Suscripción (Si está configurada para el curso) */}
+                {/* Selector de Modalidad y Planes de Pago (Cuotas Mensuales vs Pago Único) */}
                 {event.has_subscription && event.subscription_details && (
-                  <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 via-[#0a121e] to-cyan-950/30 p-4 sm:p-5 relative overflow-hidden shadow-[0_0_30px_rgba(84,180,53,0.15)]">
-                    <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-white/10">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-[#54B435] border border-emerald-500/30">
-                          <CreditCard className="h-4 w-4 text-[#54B435]" />
-                        </div>
-                        <div>
-                          <h4 className="font-display text-sm sm:text-base font-bold text-white leading-tight">
-                            Plan de Suscripción en Cuotas
-                          </h4>
-                          <span className="text-[11px] text-emerald-400 font-mono">
-                            {event.subscription_details.plan_name || 'Modalidad de pago fraccionado oficial'}
-                          </span>
-                        </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-[#54B435]" />
+                        <h4 className="font-display text-sm font-bold text-white uppercase tracking-wider">
+                          Modalidad de Pago y Cuotas Presenciales
+                        </h4>
                       </div>
-                      <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                      <span className="text-[11px] font-mono text-emerald-400">
                         {event.subscription_details.installments > 0
-                          ? `${event.subscription_details.installments} Cuotas`
-                          : 'Suscripción Continua'}
+                          ? `${event.subscription_details.installments} cuotas programadas`
+                          : 'Suscripción continua'}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
-                      <div className="rounded-xl bg-black/40 border border-white/10 p-3">
-                        <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                          Monto por Cuota
-                        </span>
-                        <span className="font-display text-lg sm:text-xl font-extrabold text-white">
-                          {event.subscription_details.price}
-                        </span>
-                        <span className="text-[11px] text-slate-400 block font-mono">
-                          cada {event.subscription_details.interval}
-                        </span>
-                      </div>
-
-                      <div className="rounded-xl bg-black/40 border border-white/10 p-3">
-                        <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                          Cuotas Programadas
-                        </span>
-                        <span className="font-display text-lg sm:text-xl font-extrabold text-emerald-400">
-                          {event.subscription_details.installments > 0
-                            ? `${event.subscription_details.installments} cuotas`
-                            : 'Recurrente'}
-                        </span>
-                        <span className="text-[11px] text-slate-400 block">
-                          {event.subscription_details.cuotas_text}
-                        </span>
-                      </div>
-
-                      {event.subscription_details.sign_up_fee && (
-                        <div className="rounded-xl bg-black/40 border border-white/10 p-3">
-                          <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                            Matrícula Inicial
+                    {/* Tarjetas selectoras de Modalidad */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Opción 1: Plan en Cuotas */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPlanType('cuotas');
+                          setPaymentMethod('suscripcion');
+                        }}
+                        className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden cursor-pointer ${
+                          selectedPlanType === 'cuotas'
+                            ? 'border-[#54B435] bg-gradient-to-br from-emerald-950/60 via-[#0b1320] to-cyan-950/40 shadow-[0_0_25px_rgba(84,180,53,0.25)]'
+                            : 'border-white/10 bg-black/40 hover:border-white/20 hover:bg-white/[0.03]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#54B435] animate-pulse"></span>
+                            Plan en Cuotas Mensuales
                           </span>
-                          <span className="font-display text-lg sm:text-xl font-extrabold text-cyan-300">
-                            {event.subscription_details.sign_up_fee}
-                          </span>
-                          <span className="text-[11px] text-slate-400 block">
-                            Única vez al registrar
+                          <span className="rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold px-2 py-0.5 border border-cyan-500/30">
+                            Recomendado
                           </span>
                         </div>
-                      )}
-
-                      {event.subscription_details.total_subscription_price && (
-                        <div className="rounded-xl bg-black/40 border border-white/10 p-3">
-                          <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                            Inversión Total
+                        <div className="flex items-baseline gap-1.5 mb-1">
+                          <span className="font-display text-2xl font-black text-white">
+                            {event.subscription_details.price}
                           </span>
-                          <span className="font-display text-lg sm:text-xl font-extrabold text-white">
-                            {event.subscription_details.total_subscription_price}
-                          </span>
-                          <span className="text-[11px] text-slate-400 block">
-                            Total en cuotas
+                          <span className="text-xs text-slate-400 font-mono">
+                            / {event.subscription_details.interval}
                           </span>
                         </div>
-                      )}
+                        <p className="text-xs text-slate-300">
+                          {event.subscription_details.cuotas_text || event.subscription_details.summary}
+                        </p>
+                      </button>
+
+                      {/* Opción 2: Pago Único */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPlanType('one_time');
+                          setPaymentMethod(event.price_raw ? 'cashea' : 'pago_movil');
+                        }}
+                        className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden cursor-pointer ${
+                          selectedPlanType === 'one_time'
+                            ? 'border-cyan-500 bg-gradient-to-br from-cyan-950/50 via-[#0b1320] to-black shadow-[0_0_25px_rgba(6,182,212,0.25)]'
+                            : 'border-white/10 bg-black/40 hover:border-white/20 hover:bg-white/[0.03]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 border border-cyan-500/40 text-cyan-300">
+                            Pago Único Presencial
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1.5 mb-1">
+                          <span className="font-display text-2xl font-black text-white">
+                            {event.price}
+                          </span>
+                          <span className="text-xs text-slate-400 font-mono">
+                            Total
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300">
+                          Acceso presencial y virtual completo sin pagos mensuales posteriores.
+                        </p>
+                      </button>
                     </div>
 
-                    <p className="mt-3 text-xs text-slate-300 leading-relaxed bg-white/[0.03] p-2.5 rounded-xl border border-white/5">
-                      💡 <strong>¿Cómo funciona?</strong> Pagas tu primera cuota ({event.subscription_details.price}{event.subscription_details.sign_up_fee ? ` + matrícula de ${event.subscription_details.sign_up_fee}` : ''}) para reservar tu cupo, y el resto se cancela periódicamente cada {event.subscription_details.interval}.
-                    </p>
+                    {/* Desglose de Cuotas y Cronograma de Pagos */}
+                    {selectedPlanType === 'cuotas' && (
+                      <div className="rounded-2xl border border-emerald-500/35 bg-gradient-to-br from-emerald-950/30 via-[#08101a] to-slate-950/80 p-4 sm:p-5 space-y-4">
+                        {/* Resumen métricas */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          <div className="rounded-xl bg-black/50 border border-white/10 p-3">
+                            <span className="text-[10px] uppercase font-mono text-slate-400 block mb-0.5">
+                              Monto por Cuota
+                            </span>
+                            <span className="font-display text-base sm:text-lg font-bold text-white">
+                              {event.subscription_details.price}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block font-mono">
+                              cada {event.subscription_details.interval}
+                            </span>
+                          </div>
+
+                          <div className="rounded-xl bg-black/50 border border-white/10 p-3">
+                            <span className="text-[10px] uppercase font-mono text-slate-400 block mb-0.5">
+                              Cuotas Totales
+                            </span>
+                            <span className="font-display text-base sm:text-lg font-bold text-emerald-400">
+                              {event.subscription_details.installments > 0
+                                ? `${event.subscription_details.installments} meses`
+                                : 'Recurrente'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {event.subscription_details.cuotas_text}
+                            </span>
+                          </div>
+
+                          {event.subscription_details.sign_up_fee && (
+                            <div className="rounded-xl bg-black/50 border border-white/10 p-3">
+                              <span className="text-[10px] uppercase font-mono text-slate-400 block mb-0.5">
+                                Matrícula Inicial
+                              </span>
+                              <span className="font-display text-base sm:text-lg font-bold text-cyan-300">
+                                {event.subscription_details.sign_up_fee}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block">
+                                Única vez
+                              </span>
+                            </div>
+                          )}
+
+                          {event.subscription_details.total_subscription_price && (
+                            <div className="rounded-xl bg-black/50 border border-white/10 p-3">
+                              <span className="text-[10px] uppercase font-mono text-slate-400 block mb-0.5">
+                                Total en Cuotas
+                              </span>
+                              <span className="font-display text-base sm:text-lg font-bold text-white">
+                                {event.subscription_details.total_subscription_price}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block">
+                                Plan completo
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Cronograma de Cuotas: Cuándo se pagan */}
+                        {event.subscription_details.schedule && event.subscription_details.schedule.length > 0 && (
+                          <div className="space-y-2 pt-2 border-t border-white/10">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5 text-[#54B435]" />
+                                <span>Cronograma de Cobro de Cuotas (Fechas de Pago)</span>
+                              </span>
+                              <span className="text-[11px] font-mono text-slate-400">
+                                {event.subscription_details.schedule.length} fechas programadas
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                              {event.subscription_details.schedule.map((item) => {
+                                const isFirst = item.installment_number === 1;
+                                const isSecond = item.installment_number === 2;
+
+                                return (
+                                  <div
+                                    key={item.installment_number}
+                                    className={`p-3 rounded-xl border transition-all ${
+                                      isFirst && firstInstallmentPaid
+                                        ? 'border-emerald-500/60 bg-emerald-950/40 text-emerald-200 shadow-[0_0_15px_rgba(84,180,53,0.15)]'
+                                        : isFirst && !firstInstallmentPaid
+                                        ? 'border-cyan-500/50 bg-cyan-950/30 text-cyan-200'
+                                        : isSecond && firstInstallmentPaid
+                                        ? 'border-amber-500/50 bg-amber-950/30 text-amber-200'
+                                        : 'border-white/10 bg-black/40 text-slate-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <span className="text-[11px] font-mono font-bold uppercase tracking-wider">
+                                        {item.label}
+                                      </span>
+                                      {isFirst && firstInstallmentPaid ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-[#54B435] border border-emerald-500/40 flex items-center gap-1">
+                                          <Check className="h-3 w-3" />
+                                          Pagada en sede
+                                        </span>
+                                      ) : isFirst && !firstInstallmentPaid ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                                          Pagar al inicio
+                                        </span>
+                                      ) : isSecond && firstInstallmentPaid ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                          Próximo cobro
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-slate-400">
+                                          Programada
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="font-display text-base font-extrabold text-white">
+                                      {item.amount}
+                                    </div>
+
+                                    <div className="flex items-center gap-1 text-[11px] text-slate-400 font-mono mt-1">
+                                      <Clock className="h-3 w-3 text-slate-500" />
+                                      <span>Fecha: <strong className="text-slate-200">{item.due_date_formatted}</strong></span>
+                                    </div>
+
+                                    <div className="text-[10px] text-slate-400 mt-0.5">
+                                      {item.timing_label}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* SELECTOR: ¿La primera cuota ya fue pagada? */}
+                        <div className="pt-3 border-t border-white/10 space-y-2.5">
+                          <label className="block text-xs font-bold text-white flex items-center gap-2">
+                            <span>¿La primera cuota ya fue cancelada / pagada?</span>
+                          </label>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {/* Opción NO */}
+                            <button
+                              type="button"
+                              onClick={() => setFirstInstallmentPaid(false)}
+                              className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                                !firstInstallmentPaid
+                                  ? 'border-cyan-500 bg-cyan-950/30 text-white shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                                  : 'border-white/10 bg-black/40 text-slate-400 hover:border-white/20'
+                              }`}
+                            >
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border mt-0.5 ${
+                                !firstInstallmentPaid ? 'border-cyan-400 bg-cyan-500 text-black' : 'border-slate-600'
+                              }`}>
+                                {!firstInstallmentPaid && <Check className="h-3 w-3 stroke-[3]" />}
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold block text-white">
+                                  No, pagar 1era cuota en línea ahora
+                                </span>
+                                <span className="text-[11px] text-slate-400 block mt-0.5">
+                                  Pagas tu primera cuota ({event.subscription_details.price}) por checkout web para reservar tu cupo presencial.
+                                </span>
+                              </div>
+                            </button>
+
+                            {/* Opción SÍ */}
+                            <button
+                              type="button"
+                              onClick={() => setFirstInstallmentPaid(true)}
+                              className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                                firstInstallmentPaid
+                                  ? 'border-[#54B435] bg-emerald-950/40 text-white shadow-[0_0_15px_rgba(84,180,53,0.2)]'
+                                  : 'border-white/10 bg-black/40 text-slate-400 hover:border-white/20'
+                              }`}
+                            >
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border mt-0.5 ${
+                                firstInstallmentPaid ? 'border-[#54B435] bg-[#54B435] text-black' : 'border-slate-600'
+                              }`}>
+                                {firstInstallmentPaid && <Check className="h-3 w-3 stroke-[3]" />}
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold block text-white">
+                                  Sí, ya la pagué en sede física
+                                </span>
+                                <span className="text-[11px] text-slate-400 block mt-0.5">
+                                  Efectivo, punto de venta o transferencia bancaria realizada directamente en la academia.
+                                </span>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Notificación explicativa contextual */}
+                          {firstInstallmentPaid ? (
+                            <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/30 text-xs text-emerald-200 flex items-start gap-2 mt-2">
+                              <CheckCircle2 className="h-4 w-4 text-[#54B435] shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <strong>1era Cuota Registrada:</strong> Tu asiento en sede queda confirmado. Tu <strong>2da cuota</strong> se cobrará el{' '}
+                                <strong className="text-white">
+                                  {event.subscription_details.schedule?.[1]?.due_date_formatted || 'en 30 días'}
+                                </strong>. Completa la ficha para registrar tu código STB y credenciales.
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-3 rounded-xl border border-cyan-500/30 bg-cyan-950/30 text-xs text-cyan-200 flex items-start gap-2 mt-2">
+                              <CreditCard className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <strong>Pago en Línea de 1era Cuota:</strong> Al pagar los{' '}
+                                <strong className="text-white">{event.subscription_details.price}</strong> tu cupo presencial en sede física queda asegurado de inmediato y recibirás acceso al campus virtual.
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -737,69 +957,97 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   </button>
 
                   {!isFree && (
-                    <a
-                      href={event.checkout_url || `/checkout/?stb_buy_course=${event.course_id || event.id}`}
-                      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        isAdmin
-                          ? 'border border-cyan-500/30 bg-cyan-950/40 hover:bg-cyan-900/50 hover:border-cyan-400 text-cyan-200'
-                          : 'bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transform hover:-translate-y-0.5'
-                      }`}
-                    >
-                      <ShoppingCart className={`h-3.5 w-3.5 ${isAdmin ? 'text-cyan-400' : 'text-black'}`} />
-                      <span>{isAdmin ? 'Checkout en Línea' : 'Inscribirme en Línea'}</span>
-                    </a>
+                    <>
+                      {/* Si está en cuotas y NO ha pagado la primera cuota */}
+                      {selectedPlanType === 'cuotas' && event.has_subscription && event.subscription_details && !firstInstallmentPaid ? (
+                        <a
+                          href={event.subscription_details.checkout_url || event.subscription_checkout_url || `/checkout/?add-to-cart=${event.subscription_details.monthly_product_id}`}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-[#54B435] hover:bg-[#46992c] text-black shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+                        >
+                          <Zap className="h-3.5 w-3.5 fill-black" />
+                          <span>Pagar 1era Cuota en Línea ({event.subscription_details.price})</span>
+                        </a>
+                      ) : selectedPlanType === 'cuotas' && firstInstallmentPaid ? (
+                        /* Si está en cuotas y SÍ ha pagado la primera cuota en sede */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentMethod('efectivo');
+                            setActiveTab('register');
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-[#54B435] hover:bg-[#46992c] text-black shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>Registrar Ficha (1ra Cuota en Sede)</span>
+                        </button>
+                      ) : (
+                        /* Pago único */
+                        <a
+                          href={event.checkout_url || `/checkout/?stb_buy_course=${event.course_id || event.id}`}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-[#54B435] hover:bg-[#46992c] text-black shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5 text-black" />
+                          <span>Pagar Curso Completo ({event.price})</span>
+                        </a>
+                      )}
+                    </>
                   )}
 
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('register')}
-                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] hover:shadow-[0_0_28px_rgba(84,180,53,0.65)] transition-all cursor-pointer transform hover:-translate-y-0.5"
-                      title="Procedimiento administrativo: Registrar estudiante presencial inmediatamente"
-                    >
-                      <Zap className="h-4 w-4 fill-black" />
-                      <span>Inscripción Inmediata (Admin)</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('register')}
+                    className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isAdmin
+                        ? 'border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/50 text-cyan-200'
+                        : 'border border-white/15 bg-white/5 hover:bg-white/10 text-slate-300'
+                    }`}
+                    title={isAdmin ? 'Procedimiento administrativo de inscripción inmediata' : 'Completar ficha de inscripción'}
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    <span>{isAdmin ? 'Inscripción Inmediata (Admin)' : 'Ficha de Registro'}</span>
+                  </button>
                 </div>
               </div>
             </>
           )}
 
           {/* ========================================================================= */}
-          {/* PESTAÑA 2: FORMULARIO DE INSCRIPCIÓN INMEDIATA (EXCLUSIVO ADMINISTRADORES) */}
+          {/* PESTAÑA 2: FORMULARIO DE INSCRIPCIÓN A CURSO PRESENCIAL */}
           {/* ========================================================================= */}
           {activeTab === 'register' && (
-            isAdmin ? (
-              <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-                {/* Encabezado del Formulario (con pr-16 para garantizar espacio libre para el botón X) */}
-                <div className="p-4 sm:p-5 pr-16 border-b border-white/10 bg-[#070c14] flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-md">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('details')}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                      title="Volver a los detalles del curso"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 text-xs font-mono mb-0.5">
-                        <span className="inline-flex items-center gap-1 text-[#54B435] font-semibold">
-                          <Zap className="h-3 w-3 fill-[#54B435] shrink-0" />
-                          <span>Inscripción Inmediata (Admin)</span>
-                        </span>
-                        <span className="text-slate-600">•</span>
-                        <span className="text-emerald-400 font-bold">
-                          {isFree ? 'Acceso Libre' : event.price}
-                        </span>
-                      </div>
-                      <h3 className="font-display text-base sm:text-lg font-extrabold text-white leading-tight truncate" title={event.title}>
-                        {event.title}
-                      </h3>
+            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+              {/* Encabezado del Formulario (con pr-16 para garantizar espacio libre para el botón X) */}
+              <div className="p-4 sm:p-5 pr-16 border-b border-white/10 bg-[#070c14] flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-md">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('details')}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Volver a los detalles del curso"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-xs font-mono mb-0.5">
+                      <span className="inline-flex items-center gap-1 text-[#54B435] font-semibold">
+                        <Zap className="h-3 w-3 fill-[#54B435] shrink-0" />
+                        <span>{isAdmin ? 'Inscripción Inmediata (Admin)' : 'Ficha de Inscripción Presencial'}</span>
+                      </span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-emerald-400 font-bold">
+                        {selectedPlanType === 'cuotas' && event.has_subscription && event.subscription_details
+                          ? `${event.subscription_details.price} (1ra Cuota)`
+                          : isFree
+                          ? 'Acceso Libre'
+                          : event.price}
+                      </span>
                     </div>
+                    <h3 className="font-display text-base sm:text-lg font-extrabold text-white leading-tight truncate" title={event.title}>
+                      {event.title}
+                    </h3>
                   </div>
                 </div>
+              </div>
 
               {/* Cuerpo del Formulario */}
               <div className="overflow-y-auto p-5 sm:p-7 space-y-6 flex-1">
@@ -1034,22 +1282,131 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   </div>
                 </div>
 
-                {/* 4. MÉTODO DE PAGO */}
+                {/* 3. MODALIDAD Y PLAN DE PAGO */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs font-mono text-[#54B435] uppercase tracking-wider">
                       <CreditCard className="h-3.5 w-3.5" />
-                      <span>3. Método de Pago</span>
+                      <span>3. Modalidad y Plan de Pago</span>
                     </div>
                     <span className="text-xs font-extrabold text-white">
-                      Monto a Cancelar:{' '}
+                      Monto:{' '}
                       <span className="text-[#54B435]">
-                        {paymentMethod === 'suscripcion' && event.has_subscription && event.subscription_details
-                          ? `${event.subscription_details.price} (1ra Cuota)`
+                        {selectedPlanType === 'cuotas' && event.has_subscription && event.subscription_details
+                          ? `${event.subscription_details.price} (1ra Cuota de ${event.subscription_details.installments})`
                           : event.price || 'Gratis'}
                       </span>
                     </span>
                   </div>
+
+                  {/* Selector de Modalidad dentro del formulario */}
+                  {event.has_subscription && event.subscription_details && (
+                    <div className="space-y-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlanType('cuotas');
+                            setPaymentMethod('suscripcion');
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            selectedPlanType === 'cuotas'
+                              ? 'border-[#54B435] bg-[#54B435]/15 shadow-[0_0_15px_rgba(84,180,53,0.2)]'
+                              : 'border-white/10 bg-black/40 text-slate-400 hover:border-white/20'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-white">Plan en Cuotas Mensuales</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-[#54B435]">
+                              {event.subscription_details.installments} Meses
+                            </span>
+                          </div>
+                          <span className="text-xs text-emerald-400 font-mono font-bold block">
+                            {event.subscription_details.price} / {event.subscription_details.interval}
+                          </span>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">
+                            {event.subscription_details.cuotas_text || event.subscription_details.summary}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlanType('one_time');
+                            setPaymentMethod(event.price_raw ? 'cashea' : 'pago_movil');
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            selectedPlanType === 'one_time'
+                              ? 'border-cyan-500 bg-cyan-950/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                              : 'border-white/10 bg-black/40 text-slate-400 hover:border-white/20'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-white">Pago Único Presencial</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300">
+                              Total
+                            </span>
+                          </div>
+                          <span className="text-xs text-cyan-300 font-mono font-bold block">
+                            {event.price}
+                          </span>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">
+                            Acceso presencial y virtual completo
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Selector de 1era cuota pagada dentro del formulario */}
+                      {selectedPlanType === 'cuotas' && (
+                        <div className="p-3 rounded-xl border border-white/15 bg-black/50 space-y-2">
+                          <label className="block text-xs font-bold text-white">
+                            ¿La primera cuota ya fue pagada?
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setFirstInstallmentPaid(false)}
+                              className={`p-2.5 rounded-lg border text-xs font-semibold text-left flex items-center gap-2 cursor-pointer transition-all ${
+                                !firstInstallmentPaid
+                                  ? 'border-cyan-400 bg-cyan-500/20 text-white'
+                                  : 'border-white/10 bg-white/5 text-slate-400'
+                              }`}
+                            >
+                              <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                                !firstInstallmentPaid ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'
+                              }`} />
+                              <span>No, pagar en línea ahora</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFirstInstallmentPaid(true);
+                                setPaymentMethod('efectivo');
+                              }}
+                              className={`p-2.5 rounded-lg border text-xs font-semibold text-left flex items-center gap-2 cursor-pointer transition-all ${
+                                firstInstallmentPaid
+                                  ? 'border-[#54B435] bg-emerald-500/20 text-white'
+                                  : 'border-white/10 bg-white/5 text-slate-400'
+                              }`}
+                            >
+                              <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                                firstInstallmentPaid ? 'border-[#54B435] bg-[#54B435]' : 'border-slate-500'
+                              }`} />
+                              <span>Sí, ya pagada en sede física</span>
+                            </button>
+                          </div>
+
+                          {firstInstallmentPaid && (
+                            <p className="text-[11px] text-emerald-300 bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/30">
+                              ✓ Se registrará como pagada la 1era cuota. La 2da cuota quedará programada para el{' '}
+                              <strong>{event.subscription_details.schedule?.[1]?.due_date_formatted || 'próximo mes'}</strong>.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {!isFree && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl border border-cyan-500/25 bg-gradient-to-r from-cyan-950/40 via-black to-slate-950/40 text-xs text-slate-300">
@@ -1232,41 +1589,13 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                   ) : (
                     <>
                       <Zap className="h-3.5 w-3.5 fill-black" />
-                      <span>Confirmar Inscripción Inmediata</span>
+                      <span>{isAdmin ? 'Confirmar Inscripción Inmediata' : 'Completar Registro'}</span>
                     </>
                   )}
                 </button>
               </div>
             </form>
-          ) : (
-            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-4 my-auto flex-1">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
-                <ShieldCheck className="h-8 w-8" />
-              </div>
-              <h3 className="font-display text-xl font-bold text-white">Acceso Administrativo Requerido</h3>
-              <p className="text-xs sm:text-sm text-slate-400 max-w-md leading-relaxed">
-                El procedimiento de inscripción inmediata en sede física está reservado exclusivamente para el personal administrativo de STB Academy. Para inscribirte en este curso presencial, por favor utiliza la opción de inscripción en línea.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('details')}
-                  className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold text-xs transition-all cursor-pointer"
-                >
-                  Ver Detalles
-                </button>
-                {!isFree && (
-                  <a
-                    href={event.checkout_url || `/checkout/?stb_buy_course=${event.course_id || event.id}`}
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#54B435] hover:bg-[#46992c] text-black font-extrabold text-xs shadow-[0_0_20px_rgba(84,180,53,0.45)] transition-all cursor-pointer"
-                  >
-                    <ShoppingCart className="h-4 w-4 text-black" />
-                    <span>Inscribirme en Línea</span>
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
+          )}
 
           {/* ========================================================================= */}
           {/* PESTAÑA 3: CONFIRMACIÓN EXITOSA CON DETALLES Y WHATSAPP                   */}
@@ -1427,16 +1756,26 @@ Por favor confirmen mi cupo. ¡Nos vemos en clase!`;
                     <span>{event.location}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[11px]">Método de Pago:</span>
+                    <span className="text-slate-500 block text-[11px]">Modalidad y Pago:</span>
                     <strong className="text-emerald-400 capitalize">
-                      {paymentMethods.find((m) => m.id === paymentMethod)?.title || paymentMethod}
+                      {selectedPlanType === 'cuotas' ? 'Plan en Cuotas Mensuales' : 'Pago Único Presencial'}
                     </strong>
-                    {paymentMethod === 'suscripcion' && event.has_subscription && event.subscription_details && (
-                      <span className="block text-[11px] text-slate-300 font-mono mt-0.5">
-                        {event.subscription_details.cuotas_text || event.subscription_details.summary}
-                      </span>
+                    {selectedPlanType === 'cuotas' && event.has_subscription && event.subscription_details && (
+                      <div className="mt-1 space-y-0.5 text-[11px] font-mono">
+                        <span className="text-slate-300 block">
+                          {event.subscription_details.cuotas_text || event.subscription_details.summary}
+                        </span>
+                        <span className="block text-emerald-300">
+                          1era Cuota: {firstInstallmentPaid ? '✓ Registrada como pagada en sede' : 'Pendiente de pago en línea'}
+                        </span>
+                        {nextInstallmentDate && (
+                          <span className="block text-amber-300">
+                            Próxima cuota (2da) vence el: {nextInstallmentDate}
+                          </span>
+                        )}
+                      </div>
                     )}
-                    {paymentRef && <span className="font-mono ml-2 text-slate-400">(Ref: {paymentRef})</span>}
+                    {paymentRef && <span className="font-mono text-slate-400 block mt-0.5">(Ref / Comprobante: {paymentRef})</span>}
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[11px]">Estación de Trabajo:</span>
